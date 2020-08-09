@@ -6,15 +6,17 @@ CXX      = g++
 DEBUG ?= 0
 ifeq ($(DEBUG), 1)
 	# Debug CFLAGS
-	CFLAGS   = -DDISK_LOG -O0 -g -Wall -DDEBUG
-	CXXFLAGS   = -DDISK_LOG -O0 -g -Wall -DDEBUG
+	CFLAGS   += -DDISK_LOG -O0 -g -Wall -DDEBUG
+	CXXFLAGS   += -DDISK_LOG -O0 -g -Wall -DDEBUG
 	BUILD_TYPE = Debug
 else
 	# Release CFLAGS
-	CFLAGS ?= -O3 -Wall -Werror
-	CXXFLAGS ?= -O3 -Wall -Werror
+	CFLAGS += -O3 -Wall -Werror
+	CXXFLAGS += -O3 -Wall -Werror
 	BUILD_TYPE = Release
 endif
+CFLAGS += -Idisks -Icontrollers -I.
+CXXFLAGS += -Idisks -Icontrollers -I.
 
 # If its not specified, build for STANDARD configuration
 CONNECT_TYPE ?= STANDARD
@@ -34,10 +36,13 @@ USR_LOCAL_BIN = /usr/local/bin
 MAN_PAGE_DIR  = /usr/share/man/man1
 DOC_DIR = ../../doc
 
+OBJDIR := ./obj
+BINDIR := ./bin
+
 #BIN_ALL = $(RASCSI) $(RASCTL) $(RASDUMP) $(SASIDUMP) $(SCSIMON)
 # Temporarily remove the RASDUMP and RASDUMP tools, since they're not needed
 # for my specific use case. If you need them - add them back in!
-BIN_ALL = $(RASCSI) $(RASCTL)
+BIN_ALL = $(BINDIR)/$(RASCSI) $(BINDIR)/$(RASCTL)
 
 
 SRC_RASCSI = \
@@ -49,6 +54,8 @@ SRC_RASCSI = \
 	cfilesystem.cpp \
 	filepath.cpp \
 	fileio.cpp
+SRC_RASCSI += $(notdir $(shell find ./controllers -name '*.cpp'))
+SRC_RASCSI += $(notdir $(shell find ./disks -name '*.cpp'))
 
 SRC_RASCTL = \
 	rasctl.cpp
@@ -67,18 +74,33 @@ SRC_SASIDUMP = \
 	filepath.cpp \
 	fileio.cpp
 
-OBJ_RASCSI := $(SRC_RASCSI:%.cpp=%.o)
-OBJ_RASCTL := $(SRC_RASCTL:%.cpp=%.o)
-OBJ_RASDUMP := $(SRC_RASDUMP:%.cpp=%.o)
-OBJ_SASIDUMP := $(SRC_SASIDUMP:%.cpp=%.o)
-OBJ_SCSIMON  := $(SRC_SCSIMON:%.cpp=%.o)
+vpath %.h ./ ./controllers ./disks
+vpath %.cpp ./ ./controllers ./disks
+vpath %.o ./$(OBJDIR)
+vpath ./$(BINDIR)
+
+
+OBJ_RASCSI := $(SRC_RASCSI:%.cpp=$(OBJDIR)/%.o)
+OBJ_RASCTL := $(SRC_RASCTL:%.cpp=$(OBJDIR)/%.o)
+OBJ_RASDUMP := $(SRC_RASDUMP:%.cpp=$(OBJDIR)/%.o)
+OBJ_SASIDUMP := $(SRC_SASIDUMP:%.cpp=$(OBJDIR)/%.o)
+OBJ_SCSIMON  := $(SRC_SCSIMON:%.cpp=$(OBJDIR)/%.o)
 #OBJ_ALL := $(OBJ_RASCSI) $(OBJ_RASCTL) $(OBJ_RASDUMP) $(OBJ_SASIDUMP) $(OBJ_SCSIMON)
 OBJ_ALL := $(OBJ_RASCSI) $(OBJ_RASCTL) $(OBJ_RASDUMP) $(OBJ_SASIDUMP)
 
-%.o: %.cpp
+$(OBJDIR) $(BINDIR):
+	mkdir -p $@
+
+$(OBJDIR)/%.o: %.cpp $(OBJDIR)
+	@echo "SRC_RASCSI: " $(SRC_RASCSI)
+	@echo "OBJ_RASCSI: " $(OBJ_RASCSI)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+# $(OBJDIR)/%.o: %.c
+# 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+# %.o: %.cpp
+# 	$(CXX) $(CXXFLAGS) -c $(OBJDIR)/$< -o $@
 
 .DEFAULT_GOAL := all
 .PHONY: all ALL docs
@@ -87,23 +109,23 @@ ALL: all
 
 docs: $(DOC_DIR)/rascsi_man_page.txt $(DOC_DIR)/rasctl_man_page.txt
 
-$(RASCSI): $(OBJ_RASCSI)
+$(BINDIR)/$(RASCSI): $(OBJ_RASCSI) $(BINDIR)
 	$(CXX) -o $@ $(OBJ_RASCSI) -lpthread
 
-$(RASCTL): $(OBJ_RASCTL)
+$(BINDIR)/$(RASCTL): $(OBJ_RASCTL) $(BINDIR)
 	$(CXX) -o $@ $(OBJ_RASCTL)
 
-$(RASDUMP): $(OBJ_RASDUMP)
+$(RASDUMP): $(OBJ_RASDUMP) $(BINDIR)
 	$(CXX) -o $@ $(OBJ_RASDUMP)
 
-$(SASIDUMP): $(OBJ_SASIDUMP)
+$(SASIDUMP): $(OBJ_SASIDUMP) $(BINDIR)
 	$(CXX) -o $@ $(OBJ_SASIDUMP)
 
-$(SCSIMON): $(OBJ_SCSIMON)
+$(SCSIMON): $(OBJ_SCSIMON) $(BINDIR)
 	$(CXX) $(CXXFLAGS) -o $@ $(OBJ_SCSIMON) -lpthread
 
 clean:
-	rm -f $(OBJ_ALL) $(BIN_ALL)
+	rm -f $(OBJDIR) $(BINDIR)
 
 run:
 	sudo ./$(RASCSI) -ID1 /home/pi/HARDDISK2.hda -ID6 /home/pi/marathon.iso
