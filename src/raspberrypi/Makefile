@@ -48,10 +48,7 @@ BIN_ALL = $(BINDIR)/$(RASCSI) $(BINDIR)/$(RASCTL)
 SRC_RASCSI = \
 	rascsi.cpp \
 	scsi.cpp \
-	disk.cpp \
 	gpiobus.cpp \
-	ctapdriver.cpp \
-	cfilesystem.cpp \
 	filepath.cpp \
 	fileio.cpp
 SRC_RASCSI += $(notdir $(shell find ./controllers -name '*.cpp'))
