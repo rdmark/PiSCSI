@@ -78,8 +78,9 @@ void KillHandler(int sig)
 //---------------------------------------------------------------------------
 void Banner(int argc, char* argv[])
 {
-	FPRT(stdout,"SCSI Target Emulator RaSCSI(*^..^*) ");
-	FPRT(stdout,"version %01d.%01d%01d(%s, %s)\n",
+	FPRT(stdout,"SCSI Target Emulator RaSCSI(*^..^*)\n");
+	FPRT(stdout,"  68k MLA Edition\n");
+	FPRT(stdout,"Forked from GIMONS version %01d.%01d%01d(%s, %s)\n",
 		(int)((VERSION >> 8) & 0xf),
 		(int)((VERSION >> 4) & 0xf),
 		(int)((VERSION     ) & 0xf),
@@ -88,6 +89,7 @@ void Banner(int argc, char* argv[])
 	FPRT(stdout,"Powered by XM6 TypeG Technology / ");
 	FPRT(stdout,"Copyright (C) 2016-2020 GIMONS\n");
 	FPRT(stdout,"Connect type : %s\n", CONNECT_DESC);
+	FPRT(stdout,"Build on %s at %s\n", __DATE__, __TIME__);
 
 	if ((argc > 1 && strcmp(argv[1], "-h") == 0) ||
 		(argc > 1 && strcmp(argv[1], "--help") == 0)){

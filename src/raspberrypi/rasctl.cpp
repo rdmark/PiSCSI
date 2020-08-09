@@ -94,7 +94,8 @@ int main(int argc, char* argv[])
 		fprintf(stderr, "        FILE := image file path\n");
 		fprintf(stderr, " CMD is 'attach' or 'insert' and FILE parameter is required.\n");
 		fprintf(stderr, "Usage: %s -l\n", argv[0]);
-		fprintf(stderr, "       Print device list.\n");
+		fprintf(stderr, "       Print device list.\n\n");
+		fprintf(stderr,"Build on %s at %s\n", __DATE__, __TIME__);
 		exit(0);
 	}
 
