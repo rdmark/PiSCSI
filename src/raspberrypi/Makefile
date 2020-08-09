@@ -125,7 +125,7 @@ $(SCSIMON): $(OBJ_SCSIMON) $(BINDIR)
 	$(CXX) $(CXXFLAGS) -o $@ $(OBJ_SCSIMON) -lpthread
 
 clean:
-	rm -f $(OBJDIR) $(BINDIR)
+	rm -rf $(OBJDIR) $(BINDIR)
 
 run:
 	sudo ./$(RASCSI) -ID1 /home/pi/HARDDISK2.hda -ID6 /home/pi/marathon.iso
