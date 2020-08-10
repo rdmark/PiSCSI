@@ -153,4 +153,11 @@ typedef const char *LPCSTR;
 #define xstrcasecmp strcasecmp
 #define xstrncasecmp strncasecmp
 
+//---------------------------------------------------------------------------
+//
+//	Pin the thread to a specific CPU
+//
+//---------------------------------------------------------------------------
+void FixCpu(int cpu);
+
 #endif	// os_h

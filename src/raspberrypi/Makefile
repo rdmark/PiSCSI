@@ -50,12 +50,17 @@ SRC_RASCSI = \
 	scsi.cpp \
 	gpiobus.cpp \
 	filepath.cpp \
-	fileio.cpp
+	fileio.cpp\
+	rascsi_mgr.cpp\
+	command_thread.cpp\
+	os.cpp\
+	rasctl_command.cpp
 SRC_RASCSI += $(notdir $(shell find ./controllers -name '*.cpp'))
 SRC_RASCSI += $(notdir $(shell find ./disks -name '*.cpp'))
 
 SRC_RASCTL = \
-	rasctl.cpp
+	rasctl.cpp\
+	rasctl_command.cpp
 
 SRC_RASDUMP = \
 	rasdump.cpp \
@@ -107,9 +112,11 @@ ALL: all
 docs: $(DOC_DIR)/rascsi_man_page.txt $(DOC_DIR)/rasctl_man_page.txt
 
 $(BINDIR)/$(RASCSI): $(OBJ_RASCSI) $(BINDIR)
+	@echo -- Linking $(RASCSI)
 	$(CXX) -o $@ $(OBJ_RASCSI) -lpthread
 
 $(BINDIR)/$(RASCTL): $(OBJ_RASCTL) $(BINDIR)
+	@echo -- Linking $(RASCTL)
 	$(CXX) -o $@ $(OBJ_RASCTL)
 
 $(RASDUMP): $(OBJ_RASDUMP) $(BINDIR)

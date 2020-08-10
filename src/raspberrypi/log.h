@@ -12,6 +12,13 @@
 #if !defined(log_h)
 #define log_h
 
+#ifdef BAREMETAL
+#define FPRT(fp, ...) printf( __VA_ARGS__ )
+#else
+#define FPRT(fp, ...) fprintf(fp, __VA_ARGS__ )
+#endif	// BAREMETAL
+
+
 //===========================================================================
 //
 //	ログ

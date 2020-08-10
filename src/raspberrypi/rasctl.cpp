@@ -10,13 +10,14 @@
 //---------------------------------------------------------------------------
 
 #include "os.h"
+#include "rasctl_command.h"
 
 //---------------------------------------------------------------------------
 //
 //	Send Command
 //
 //---------------------------------------------------------------------------
-BOOL SendCommand(char *buf)
+BOOL SendCommand(BYTE *buf)
 {
 	int fd;
 	struct sockaddr_in server;
@@ -39,7 +40,7 @@ BOOL SendCommand(char *buf)
 	// Send the command
 	fp = fdopen(fd, "r+");
 	setvbuf(fp, NULL, _IONBF, 0);
-	fputs(buf, fp);
+	fputs((char*)buf, fp);
 
 	// Receive the message
 	while (1) {
@@ -66,20 +67,17 @@ int main(int argc, char* argv[])
 	int opt;
 	int id;
 	int un;
-	int cmd;
-	int type;
 	char *file;
-	BOOL list;
 	int len;
 	char *ext;
-	char buf[BUFSIZ];
+	BYTE buf[BUFSIZ];
+	rasctl_command cmd = rasctl_cmd_invalid;
+	rasctl_dev_type type = rasctl_dev_invalid;
+	Rasctl_Command *rasctl_cmd;
 
 	id = -1;
 	un = 0;
-	cmd = -1;
-	type = -1;
 	file = NULL;
-	list = FALSE;
 
 	// Display help
 	if (argc < 2) {
@@ -115,23 +113,27 @@ int main(int argc, char* argv[])
 				switch (optarg[0]) {
 					case 'a':				// ATTACH
 					case 'A':
-						cmd = 0;
+						cmd = rasctl_cmd_attach;
 						break;
 					case 'd':				// DETACH
 					case 'D':
-						cmd = 1;
+						cmd = rasctl_cmd_detach;
 						break;
 					case 'i':				// INSERT
 					case 'I':
-						cmd = 2;
+						cmd = rasctl_cmd_insert;
 						break;
 					case 'e':				// EJECT
 					case 'E':
-						cmd = 3;
+						cmd = rasctl_cmd_eject;
 						break;
 					case 'p':				// PROTECT
 					case 'P':
-						cmd = 4;
+						cmd = rasctl_cmd_protect;
+						break;
+					case 's':				// Shutdown the rasci service
+					case 'S':
+						cmd = rasctl_cmd_shutdown;
 						break;
 				}
 				break;
@@ -140,120 +142,124 @@ int main(int argc, char* argv[])
 				switch (optarg[0]) {
 					case 's':				// HD(SASI)
 					case 'S':
+						type = rasctl_dev_sasi_hd;
+						break;
 					case 'h':				// HD(SCSI)
 					case 'H':
-						type = 0;
+						type = rasctl_dev_scsi_hd;
 						break;
 					case 'm':				// MO
 					case 'M':
-						type = 2;
+						type = rasctl_dev_mo;
 						break;
 					case 'c':				// CD
 					case 'C':
-						type = 3;
+						type = rasctl_dev_cd;
 						break;
 					case 'b':				// BRIDGE
 					case 'B':
-						type = 4;
+						type = rasctl_dev_br;
 						break;
 				}
 				break;
-
 			case 'f':
 				file = optarg;
 				break;
-
 			case 'l':
-				list = TRUE;
+				cmd = rasctl_cmd_list;
 				break;
 		}
 	}
 
-	// List display only
-	if (id < 0 && cmd < 0 && type < 0 && file == NULL && list) {
-		sprintf(buf, "list\n");
-		SendCommand(buf);
-		exit(0);
-	}
+	if((cmd != rasctl_cmd_list) && (cmd != rasctl_cmd_shutdown)){
 
-	// Check the ID number
-	if (id < 0 || id > 7) {
-		fprintf(stderr, "Error : Invalid ID\n");
-		exit(EINVAL);
-	}
+		// Check the ID number
+		if (id < 0 || id > 7) {
+			fprintf(stderr, "Error : Invalid ID\n");
+			exit(EINVAL);
+		}
 
-	// Check the unit number
-	if (un < 0 || un > 1) {
-		fprintf(stderr, "Error : Invalid UNIT\n");
-		exit(EINVAL);
-	}
+		// Check the unit number
+		if (un < 0 || un > 1) {
+			fprintf(stderr, "Error : Invalid UNIT\n");
+			exit(EINVAL);
+		}
 
-	// Command check
-	if (cmd < 0) {
-		cmd = 0;	// Default command is ATTATCH
-	}
+		// Command check
+		if (cmd == rasctl_cmd_invalid) {
+			cmd = rasctl_cmd_attach;	// Default command is ATTATCH
+		}
 
-	// Type Check
-	if (cmd == 0 && type < 0) {
+		// Type Check
+		if (cmd == rasctl_cmd_attach && type == rasctl_dev_invalid) {
 
-		// Try to determine the file type from the extension
-		len = file ? strlen(file) : 0;
-		if (len > 4 && file[len - 4] == '.') {
-			ext = &file[len - 3];
-			if (xstrcasecmp(ext, "hdf") == 0 ||
-				xstrcasecmp(ext, "hds") == 0 ||
-				xstrcasecmp(ext, "hdn") == 0 ||
-				xstrcasecmp(ext, "hdi") == 0 ||
-				xstrcasecmp(ext, "nhd") == 0 ||
-				xstrcasecmp(ext, "hda") == 0) {
-				// HD(SASI/SCSI)
-				type = 0;
-			} else if (xstrcasecmp(ext, "mos") == 0) {
-				// MO
-				type = 2;
-			} else if (xstrcasecmp(ext, "iso") == 0) {
-				// CD
-				type = 3;
+			// Try to determine the file type from the extension
+			len = file ? strlen(file) : 0;
+			if (len > 4 && file[len - 4] == '.') {
+				ext = &file[len - 3];
+				if (xstrcasecmp(ext, "hdf") == 0){
+					type = rasctl_dev_sasi_hd;
+				}else if(xstrcasecmp(ext, "hds") == 0 ||
+					xstrcasecmp(ext, "hdi") == 0 ||
+					xstrcasecmp(ext, "nhd") == 0){
+					type = rasctl_dev_scsi_hd;
+				}else if(xstrcasecmp(ext, "hdn") == 0) {
+					// NEC HD(SASI/SCSI)
+					type = rasctl_dev_scsi_hd_appl;
+				}else if(xstrcasecmp(ext, "hda") == 0) {
+					// Apple HD(SASI/SCSI)
+					type = rasctl_dev_scsi_hd_appl;
+				}else if (xstrcasecmp(ext, "mos") == 0) {
+					// MO
+					type = rasctl_dev_mo;
+				}else if (xstrcasecmp(ext, "iso") == 0) {
+					// CD
+					type = rasctl_dev_cd;
+				}
+			}
+
+			if (type == rasctl_dev_invalid) {
+				fprintf(stderr, "Error : Invalid type\n");
+				exit(EINVAL);
 			}
 		}
 
-		if (type < 0) {
-			fprintf(stderr, "Error : Invalid type\n");
-			exit(EINVAL);
+		// File check (command is ATTACH and type is HD)
+		if ((cmd == rasctl_cmd_attach) && (Rasctl_Command::rasctl_dev_is_hd(type))){
+			if (!file) {
+				fprintf(stderr, "Error : Invalid file path\n");
+				exit(EINVAL);
+			}
+		}
+
+		// File check (command is INSERT)
+		if (cmd == rasctl_cmd_insert) {
+			if (!file) {
+				fprintf(stderr, "Error : Invalid file path\n");
+				exit(EINVAL);
+			}
+		}
+
+		// If we don't know what the type is, default to SCSI HD
+		if (type == rasctl_dev_invalid) {
+			type = rasctl_dev_scsi_hd;
 		}
 	}
 
-	// File check (command is ATTACH and type is HD)
-	if (cmd == 0 && type >= 0 && type <= 1) {
-		if (!file) {
-			fprintf(stderr, "Error : Invalid file path\n");
-			exit(EINVAL);
-		}
-	}
-
-	// File check (command is INSERT)
-	if (cmd == 2) {
-		if (!file) {
-			fprintf(stderr, "Error : Invalid file path\n");
-			exit(EINVAL);
-		}
-	}
-
-	// Set unnecessary type to 0
-	if (type < 0) {
-		type = 0;
+	rasctl_cmd = new Rasctl_Command();
+	rasctl_cmd->type = type;
+	rasctl_cmd->un = un;
+	rasctl_cmd->id = id;
+	rasctl_cmd->cmd = cmd;
+	if(file){
+		strncpy(rasctl_cmd->file,file,_MAX_PATH);
 	}
 
 	// Generate the command and send it
-	sprintf(buf, "%d %d %d %d %s\n", id, un, cmd, type, file ? file : "-");
+	rasctl_cmd->Serialize(buf,BUFSIZ);
+
 	if (!SendCommand(buf)) {
 		exit(ENOTCONN);
-	}
-
-	// Display the list
-	if (list) {
-		sprintf(buf, "list\n");
-		SendCommand(buf);
 	}
 
 	// All done!
