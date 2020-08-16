@@ -1,23 +1,41 @@
 #include "rasctl_command.h"
 #include "rascsi_mgr.h"
+#include <string.h>
 
-const char* Rasctl_Command::m_delimiter = "\x1E"; // Record separator charater
-//const char* Rasctl_Command::m_delimiter = " "; // Record separator charater
+// In the serialized string from rasctl
+const char* Rasctl_Command::m_delimiter = "\x1E\n"; // Record separator charater
+const char* Rasctl_Command::m_no_file = "----";
+const uint16_t Rasctl_Command::PortNumber = 6868;
 
-void Rasctl_Command::Serialize(BYTE *buff, int max_buff_size){
-    snprintf((char*)buff, max_buff_size, "%d%s%d%s%d%s%d%s%s%s\n",
-                this->id, this->m_delimiter,
-                this->un, this->m_delimiter,
-                this->cmd, this->m_delimiter,
-                this->type, this->m_delimiter,
-                this->file, this->m_delimiter);
+const char* Rasctl_Command::dev_type_lookup[] = {
+    "SASI Hard Drive",       // rasctl_dev_sasi_hd =  0,
+    "SCSI Hard Drive",       // rasctl_dev_scsi_hd =  1,
+    "Magneto Optical Drive", // rasctl_dev_mo      =  2,
+    "CD-ROM",                // rasctl_dev_cd      =  3,
+    "Host Bridge",           // rasctl_dev_br      =  4,
+    "Apple SCSI Hard Drive", // rasctl_dev_scsi_hd_appl =  5,
+    "NEC SCSI Hard DRive",   // rasctl_dev_scsi_hd_nec  =  6,
+};
+
+void Rasctl_Command::Serialize(char *buff, int max_buff_size){
+    // The filename string can't be empty. Otherwise, strtok will
+    // ignore the field on the receiving end.
+    if(strlen(this->file) < 1){
+        strcpy(this->file,m_no_file);
+    }
+    snprintf(buff, max_buff_size, "%d%c%d%c%d%c%d%c%s%c\n",
+                this->id, this->m_delimiter[0],
+                this->un, this->m_delimiter[0],
+                this->cmd, this->m_delimiter[0],
+                this->type, this->m_delimiter[0],
+                this->file, this->m_delimiter[0]);
 }
 
-Rasctl_Command* Rasctl_Command::DeSerialize(BYTE* buff, int size){
+Rasctl_Command* Rasctl_Command::DeSerialize(char* buff, int size){
     Rasctl_Command *return_command = new Rasctl_Command();
     char err_message[256];
     char *cur_token;
-    char *command = (char*)buff;
+    char *command = buff;
     serial_token_order cur_token_idx = serial_token_first_token;
 
     cur_token = strtok(command, m_delimiter);
@@ -31,7 +49,11 @@ Rasctl_Command* Rasctl_Command::DeSerialize(BYTE* buff, int size){
                 return_command->type = (rasctl_dev_type)atoi(cur_token);
             break;
             case serial_token_file_name:
-                strncpy(return_command->file,cur_token,_MAX_PATH);
+                if(strncmp(cur_token,m_no_file,strlen(m_no_file)) != 0){
+                    strncpy(return_command->file,cur_token,_MAX_PATH);
+                } else {
+                    strncpy(return_command->file,"",_MAX_PATH);
+                }
             break;
             case serial_token_id:
                 return_command->id = atoi(cur_token);
@@ -78,6 +100,7 @@ BOOL Rasctl_Command::rasctl_dev_is_hd(rasctl_dev_type type)
 
 BOOL Rasctl_Command::IsValid(FILE *fp){
     struct stat stat_buffer;
+    rasctl_dev_type expected_type = rasctl_dev_invalid;
 
     // If the command is "invalid" we can just return FALSE
     if(cmd == rasctl_cmd_invalid){
@@ -117,7 +140,7 @@ BOOL Rasctl_Command::IsValid(FILE *fp){
             return FALSE;
         }
         // Check that the file exists if specified
-        if(stat(file, &stat_buffer) == 0){
+        if(stat(file, &stat_buffer) != 0){
             FPRT(fp, "File %s is not accessible", file);
             return FALSE;
         }
@@ -128,74 +151,49 @@ BOOL Rasctl_Command::IsValid(FILE *fp){
         }
     }
 
-// 		char* path = optarg;
-// 		int type = -1;
-// 		if (HasSuffix(path, ".hdf")
-// 			|| HasSuffix(path, ".hds")
-// 			|| HasSuffix(path, ".hdn")
-// 			|| HasSuffix(path, ".hdi")
-// 			|| HasSuffix(path, ".hda")
-// 			|| HasSuffix(path, ".nhd")) {
-// 			type = 0;
-// 		} else if (HasSuffix(path, ".mos")) {
-// 			type = 2;
-// 		} else if (HasSuffix(path, ".iso")) {
-// 			type = 3;
-// 		} else if (xstrcasecmp(path, "bridge") == 0) {
-// 			type = 4;
-// 		} else {
-// 			// Cannot determine the file type
-// 			fprintf(stderr,
-// 					"%s: unknown file extension\n", path);
-// 			return false;
-// 		}
+    // Check if the filename extension matches the device type
+    expected_type = DeviceTypeFromFilename(fp, file);
+    if(expected_type != rasctl_dev_invalid){
+        if((file != nullptr) && (type != expected_type)) {
+            FPRT(fp, "Filename specified is for type %s. This isn't compatible with a %s device.",
+                dev_type_lookup[expected_type], dev_type_lookup[type]);
+            return FALSE;
+        }
+    }
 
-// 		int un = 0;
-// 		if (is_sasi) {
-// 			un = id % Rascsi_Manager::UnitNum;
-// 			id /= Rascsi_Manager::UnitNum;
-// 		}
-
-// 		// Execute the command
-// 		if (!ExecuteCommand(stderr, id, un, 0, type, path)) {
-// 			return false;
-// 		}
-// 		id = -1;
-// 	}
-
-// 	// Display the device list
-// 	Rascsi_Manager::GetInstance()->ListDevice(stdout);
-// 	return true;
-// }
-
-
-
-
-
-
-		// if (type == 0) {
-		// 	// Passed the check
-		// 	if (!file) {
-		// 		return FALSE;
-		// 	}
-
-		// 	// Check that command is at least 5 characters long
-		// 	len = strlen(file);
-		// 	if (len < 5) {
-		// 		return FALSE;
-		// 	}
-
-		// 	// Check the extension
-		// 	if (file[len - 4] != '.') {
-		// 		return FALSE;
-		// 	}
-
-		// 	// If the extension is not SASI type, replace with SCSI
-		// 	ext = &file[len - 3];
-		// 	if (xstrcasecmp(ext, "hdf") != 0) {
-		// 		type = 1;
-		// 	}
-
-return FALSE;
-	
+    // Everything appears to be OK
+    return TRUE;	
 }
+
+
+rasctl_dev_type Rasctl_Command::DeviceTypeFromFilename(FILE *fp, const char* filename){
+
+    const char *extension = strrchr(filename,'.');
+    rasctl_dev_type ret_type = rasctl_dev_invalid;
+
+    if(extension == nullptr){
+        fprintf(fp, "Missing file extension from %s",filename);
+        return rasctl_dev_invalid;
+    }
+
+    if(strcasecmp(extension,".hdf") == 0){
+        ret_type = rasctl_dev_sasi_hd;
+    }else if((strcasecmp(extension,".hds") == 0) ||
+            (strcasecmp(extension,".hdi") == 0) ||
+            (strcasecmp(extension,".nhd") == 0)){
+        ret_type = rasctl_dev_scsi_hd;
+    }else if(strcasecmp(extension,".hdn") == 0){
+        ret_type = rasctl_dev_scsi_hd_nec;
+    }else if(strcasecmp(extension,".hdi") == 0){
+        ret_type = rasctl_dev_scsi_hd_nec;
+    }else if(strcasecmp(extension,".hda") == 0){
+        ret_type = rasctl_dev_scsi_hd_appl;
+    }else if(strcasecmp(extension,".mos") == 0){
+        ret_type = rasctl_dev_mo;
+    }else if(strcasecmp(extension,".iso") == 0){
+        ret_type = rasctl_dev_cd;
+    }
+
+    return ret_type;
+}
+

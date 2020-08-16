@@ -40,8 +40,8 @@ enum rasctl_dev_type : int {
 
 class Rasctl_Command{
     public:
-        void Serialize(BYTE *buff, int max_buff_size);
-        static Rasctl_Command* DeSerialize(BYTE* buff, int size);
+        void Serialize(char *buff, int max_buff_size);
+        static Rasctl_Command* DeSerialize(char* buff, int size);
         BOOL IsValid(FILE *fp);
 
 
@@ -49,12 +49,17 @@ class Rasctl_Command{
         rasctl_dev_type type = rasctl_dev_invalid;
         int id = -1;
         int un = -1; 
-        char file[_MAX_PATH];
+        char file[_MAX_PATH] = "";
 
         static BOOL rasctl_dev_is_hd(rasctl_dev_type dev);
+        static const uint16_t PortNumber;
+
+        static rasctl_dev_type DeviceTypeFromFilename(FILE *fp, const char* filename);
 
     private:
         static const char* m_delimiter; // Record separator charater
+        static const char* m_no_file; // Special character sequence indicating an empty file name.
+
 
         enum serial_token_order : int {
             serial_token_first_token = 0,
@@ -65,4 +70,6 @@ class Rasctl_Command{
             serial_token_file_name = 4,
             serial_token_last_token = 5,
         };
+
+    static const char* dev_type_lookup[];
 };

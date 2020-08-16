@@ -37,18 +37,20 @@ enum Rascsi_Device_Mode_e{
 class Rascsi_Manager{
     public:
         static Rascsi_Manager* GetInstance();
-        void MapControler(FILE *fp, Disk **map);
+        static void MapControler(FILE *fp, Disk **map);
 
+        static void Stop();
+        static BOOL IsRunning();
 
-        BOOL AttachDevice(FILE *fp, Disk *disk, int id, int ui);
-        BOOL DetachDevice(FILE *fp, int id, int ui);
-        Disk* GetDevice(FILE *fp, int id, int ui);
-        void ListDevice(FILE *fp);
-        BOOL Init();
-        void Close();
-        void Reset();
-        BOOL Step();
-        Rascsi_Device_Mode_e GetCurrentDeviceMode();
+        static BOOL AttachDevice(FILE *fp, Disk *disk, int id, int ui);
+        static BOOL DetachDevice(FILE *fp, int id, int ui);
+        static Disk* GetDevice(FILE *fp, int id, int ui);
+        static void ListDevice(FILE *fp);
+        static BOOL Init();
+        static void Close();
+        static void Reset();
+        static BOOL Step();
+        static Rascsi_Device_Mode_e GetCurrentDeviceMode();
 
         static const int CtrlMax = 8;				// Maximum number of SCSI controllers
         static const int UnitNum=2;					// Number of units around controller
@@ -68,12 +70,12 @@ class Rascsi_Manager{
     	static BUS::phase_t m_phase;
 	    static BYTE m_data;
         static DWORD m_now;
-        static Rascsi_Manager *m_instance;
         static BOOL m_active;
         static BOOL m_running;
+        static BOOL m_initialized;
 
-        BOOL AttachDevicePrivate(FILE *fp, Disk *disk, int id, int ui);
-        BOOL DetachDevicePrivate(FILE *fp, int id, int ui);
+        static BOOL AttachDevicePrivate(FILE *fp, Disk *disk, int id, int ui);
+        static BOOL DetachDevicePrivate(FILE *fp, int id, int ui);
 
         // Any PUBLIC functions should lock this before accessing the m_ctrl
         // m_disk or m_bus data structures. The Public functions could be

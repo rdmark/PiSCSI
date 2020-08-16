@@ -26,9 +26,6 @@ class Command_Thread{
 
     public:
         static BOOL Init();
-        static void Start();
-        static void Stop();
-        static BOOL IsRunning();
         static void Close();
         static void KillHandler();
         static BOOL ParseArgument(int argc, char* argv[]);
@@ -40,7 +37,7 @@ class Command_Thread{
     private:
         static int m_monsocket;						// Monitor Socket
         static pthread_t m_monthread;				// Monitor Thread
-        static BOOL m_running;
+        static uint16_t  m_monitor_port_num;        // Port number to listen for commands
 
         static BOOL HasSuffix(const char* string, const char* suffix);
         static BOOL DoShutdown(FILE *fp, Rasctl_Command *incoming_command);

@@ -3,9 +3,6 @@
 #include "sasidev_ctrl.h"
 #include "scsidev_ctrl.h"
 
-Rascsi_Manager *Rascsi_Manager::m_instance = (Rascsi_Manager*)nullptr;
-        
-
 SASIDEV *Rascsi_Manager::m_ctrl[CtrlMax];			// Controller
 Disk *Rascsi_Manager::m_disk[CtrlMax * UnitNum];		// Disk
 GPIOBUS *Rascsi_Manager::m_bus;
@@ -17,13 +14,7 @@ DWORD Rascsi_Manager::m_now = 0;
 BOOL Rascsi_Manager::m_active = FALSE;
 BOOL Rascsi_Manager::m_running = FALSE;
 std::timed_mutex Rascsi_Manager::m_locked;
-
-Rascsi_Manager* Rascsi_Manager::GetInstance(){
-    if(m_instance != nullptr){
-        m_instance = new Rascsi_Manager();
-    }
-	return m_instance;
-}
+BOOL Rascsi_Manager::m_initialized = FALSE;
 
 BOOL Rascsi_Manager::AttachDevice(FILE *fp, Disk *disk, int id, int unit_num){
 	BOOL result;
@@ -54,7 +45,7 @@ BOOL Rascsi_Manager::AttachDevicePrivate(FILE *fp, Disk *disk, int id, int unit_
 
 	// Check if something already exists at that SCSI ID / Unit Number
 	if (m_disk[unitno]) {
-		DetachDevice(fp,id,unit_num);
+		DetachDevicePrivate(fp,id,unit_num);
 	}
 
 	// Add the new unit
@@ -260,12 +251,11 @@ void Rascsi_Manager::Close(){
 
 BOOL Rascsi_Manager::Init(){
 
-    if(m_instance != nullptr){
+    if(m_initialized != FALSE){
         printf("Can not initialize Rascsi_Manager twice!!!\n");
         return FALSE;    
     }
-
-    m_instance = new Rascsi_Manager();
+	m_initialized = TRUE;
 
 	// GPIOBUS creation
 	m_bus = new GPIOBUS();
@@ -288,9 +278,10 @@ BOOL Rascsi_Manager::Init(){
 		m_disk[i] = NULL;
 	}
 
-
 	// Reset
 	Reset();
+
+	m_running = TRUE;
 
 	return TRUE;
 }
@@ -404,4 +395,12 @@ BOOL Rascsi_Manager::Step()
 	m_locked.unlock();
 	return TRUE;
 
+}
+
+
+void Rascsi_Manager::Stop(){
+	m_running = FALSE;
+}
+BOOL Rascsi_Manager::IsRunning(){
+	return (m_running == TRUE);
 }

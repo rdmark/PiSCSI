@@ -17,7 +17,7 @@
 //	Send Command
 //
 //---------------------------------------------------------------------------
-BOOL SendCommand(BYTE *buf)
+BOOL SendCommand(char *buf)
 {
 	int fd;
 	struct sockaddr_in server;
@@ -27,7 +27,7 @@ BOOL SendCommand(BYTE *buf)
 	fd = socket(PF_INET, SOCK_STREAM, 0);
 	memset(&server, 0, sizeof(server));
 	server.sin_family = PF_INET;
-	server.sin_port   = htons(6868);
+	server.sin_port   = htons(Rasctl_Command::PortNumber);
 	server.sin_addr.s_addr = htonl(INADDR_LOOPBACK); 
 
 	// Connect
@@ -68,16 +68,14 @@ int main(int argc, char* argv[])
 	int id;
 	int un;
 	char *file;
-	int len;
-	char *ext;
-	BYTE buf[BUFSIZ];
+	char buf[BUFSIZ];
 	rasctl_command cmd = rasctl_cmd_invalid;
 	rasctl_dev_type type = rasctl_dev_invalid;
 	Rasctl_Command *rasctl_cmd;
 
 	id = -1;
 	un = 0;
-	file = NULL;
+	file = nullptr;
 
 	// Display help
 	if (argc < 2) {
@@ -102,11 +100,11 @@ int main(int argc, char* argv[])
 	while ((opt = getopt(argc, argv, "i:u:c:t:f:l")) != -1) {
 		switch (opt) {
 			case 'i':
-				id = optarg[0] - '0';
+				id = atoi((char*)optarg);
 				break;
 
 			case 'u':
-				un = optarg[0] - '0';
+				un = atoi((char*)optarg);
 				break;
 
 			case 'c':
@@ -175,13 +173,13 @@ int main(int argc, char* argv[])
 
 		// Check the ID number
 		if (id < 0 || id > 7) {
-			fprintf(stderr, "Error : Invalid ID\n");
+			fprintf(stderr, "Error : Invalid SCSI/SASI ID number %d\n", id);
 			exit(EINVAL);
 		}
 
 		// Check the unit number
 		if (un < 0 || un > 1) {
-			fprintf(stderr, "Error : Invalid UNIT\n");
+			fprintf(stderr, "Error : Invalid UNIT number %d\n", un);
 			exit(EINVAL);
 		}
 
@@ -190,33 +188,10 @@ int main(int argc, char* argv[])
 			cmd = rasctl_cmd_attach;	// Default command is ATTATCH
 		}
 
-		// Type Check
-		if (cmd == rasctl_cmd_attach && type == rasctl_dev_invalid) {
-
-			// Try to determine the file type from the extension
-			len = file ? strlen(file) : 0;
-			if (len > 4 && file[len - 4] == '.') {
-				ext = &file[len - 3];
-				if (xstrcasecmp(ext, "hdf") == 0){
-					type = rasctl_dev_sasi_hd;
-				}else if(xstrcasecmp(ext, "hds") == 0 ||
-					xstrcasecmp(ext, "hdi") == 0 ||
-					xstrcasecmp(ext, "nhd") == 0){
-					type = rasctl_dev_scsi_hd;
-				}else if(xstrcasecmp(ext, "hdn") == 0) {
-					// NEC HD(SASI/SCSI)
-					type = rasctl_dev_scsi_hd_appl;
-				}else if(xstrcasecmp(ext, "hda") == 0) {
-					// Apple HD(SASI/SCSI)
-					type = rasctl_dev_scsi_hd_appl;
-				}else if (xstrcasecmp(ext, "mos") == 0) {
-					// MO
-					type = rasctl_dev_mo;
-				}else if (xstrcasecmp(ext, "iso") == 0) {
-					// CD
-					type = rasctl_dev_cd;
-				}
-			}
+		// If the device type is still "invalid" (unknown), try to figure it out
+		// from the image file name.
+		if (cmd == rasctl_cmd_attach && type == rasctl_dev_invalid && file != nullptr) {
+			type = Rasctl_Command::DeviceTypeFromFilename(stderr, file);
 
 			if (type == rasctl_dev_invalid) {
 				fprintf(stderr, "Error : Invalid type\n");
@@ -255,11 +230,13 @@ int main(int argc, char* argv[])
 		strncpy(rasctl_cmd->file,file,_MAX_PATH);
 	}
 
-	// Generate the command and send it
-	rasctl_cmd->Serialize(buf,BUFSIZ);
+	if(rasctl_cmd->IsValid(stderr)){
+		// Generate the command and send it
+		rasctl_cmd->Serialize(buf,BUFSIZ);
 
-	if (!SendCommand(buf)) {
-		exit(ENOTCONN);
+		if (!SendCommand(buf)) {
+			exit(ENOTCONN);
+		}
 	}
 
 	// All done!

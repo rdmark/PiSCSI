@@ -1,7 +1,26 @@
-#include "os.h"
+//---------------------------------------------------------------------------
+//
+//	SCSI Target Emulator RaSCSI (*^..^*)
+//	for Raspberry Pi
+//
+//	Copyright (C) 2014-2020 GIMONS
+//  Copyright (C) akuker
+//
+//  Licensed under the BSD 3-Clause License. 
+//  See LICENSE file in the project root folder.
+//
+//  [ Command thread ]
+//
+//  This is a background thread that runs, listening for commands on port
+//  6868 for commands from the rasctl utility. This also includes the logic
+//  for handling the initialization commands that are specified at startup.
+//
+//---------------------------------------------------------------------------
 
-#include "rasctl_command.h"
 #include "command_thread.h"
+
+#include "os.h"
+#include "rasctl_command.h"
 #include "rascsi_mgr.h"
 #include "sasihd.h"
 #include "scsihd.h"
@@ -11,22 +30,8 @@
 #include "scsimo.h"
 #include "scsi_host_bridge.h"
 
-BOOL Command_Thread::m_running = FALSE;
 int Command_Thread::m_monsocket = -1;				// Monitor Socket
 pthread_t Command_Thread::m_monthread;				// Monitor Thread
-
-
-void Command_Thread::Start(){
-    m_running = TRUE;
-}
-void Command_Thread::Stop(){
-    m_running = FALSE;
-}
-
-BOOL Command_Thread::IsRunning(){
-	return m_running;
-}
-
 
 //---------------------------------------------------------------------------
 //
@@ -44,7 +49,7 @@ BOOL Command_Thread::Init()
 	m_monsocket = socket(PF_INET, SOCK_STREAM, 0);
 	memset(&server, 0, sizeof(server));
 	server.sin_family = PF_INET;
-	server.sin_port   = htons(6868);
+	server.sin_port   = htons(Rasctl_Command::PortNumber);
 	server.sin_addr.s_addr = htonl(INADDR_ANY);
 
 	// allow address reuse
@@ -70,6 +75,11 @@ BOOL Command_Thread::Init()
 	return TRUE;
 }
 
+//---------------------------------------------------------------------------
+//
+//	Close/Cleanup the command thread
+//
+//---------------------------------------------------------------------------
 void Command_Thread::Close(){
 	// Close the monitor socket
 	if (m_monsocket >= 0) {
@@ -292,15 +302,10 @@ void *Command_Thread::MonThread(void *param)
 	// Set the affinity to a specific processor core
 	FixCpu(2);
 
-	// Wait for the execution to start
-	while (!m_running) {
-		usleep(1);
-	}
-
 	// Setup the monitor socket to receive commands
 	listen(m_monsocket, 1);
 
-	while (1) {
+	while (Rascsi_Manager::IsRunning()) {
 		// Wait for connection
 		memset(&client, 0, sizeof(client));
 		len = sizeof(client);
@@ -316,16 +321,7 @@ void *Command_Thread::MonThread(void *param)
 		// If we received a command....
 		if (p) {
 
-			// // Remove the newline character
-			// p[strlen(p) - 1] = 0;
-
-			// // List all of the devices
-			// if (xstrncasecmp(p, "list", 4) == 0) {
-			// 	Rascsi_Manager::GetInstance()->ListDevice(fp);
-			// 	goto next;
-			// }
-
-			new_command = Rasctl_Command::DeSerialize((BYTE*)p,BUFSIZ);
+			new_command = Rasctl_Command::DeSerialize(p,BUFSIZ);
 
 			if(new_command != nullptr){
 				// Execute the command
@@ -377,22 +373,20 @@ BOOL Command_Thread::ExecuteCommand(FILE *fp, Rasctl_Command *incoming_command)
 			result = DoDetach(fp,incoming_command);
 			break;
 		default:
-			printf("UNKNOWN COMMAND RECEIVED\n");
+			fprintf(fp, "UNKNOWN COMMAND RECEIVED\n");
 	}
 
-	if(!result){
-		fputs("Unknown server error", fp);
-	}
 	return result;
 }
 
 BOOL Command_Thread::DoShutdown(FILE *fp, Rasctl_Command *incoming_command){
-	m_running = FALSE;
+	fprintf(fp, "Stopping the RaSCSI application\n");
+	Rascsi_Manager::Stop();
 	return TRUE;
 }
 
 BOOL Command_Thread::DoList(FILE *fp, Rasctl_Command *incoming_command){
-	Rascsi_Manager::GetInstance()->ListDevice(fp);
+	Rascsi_Manager::ListDevice(fp);
 	return TRUE;
 }
 
@@ -405,13 +399,13 @@ BOOL Command_Thread::DoAttach(FILE *fp, Rasctl_Command *incoming_command){
 		case rasctl_dev_sasi_hd:		// HDF
 			pUnit = new SASIHD();
 			break;
-		case rasctl_dev_scsi_hd:		// HDS/HDN/HDI/NHD/HDA
+		case rasctl_dev_scsi_hd:		// HDS/HDI
 			pUnit = new SCSIHD();
 			break;
-		case rasctl_dev_scsi_hd_appl:
+		case rasctl_dev_scsi_hd_appl:   // HDA
 			pUnit = new SCSIHD_APPLE();
 			break;
-		case rasctl_dev_scsi_hd_nec:
+		case rasctl_dev_scsi_hd_nec:    // HDN/NHD
 			pUnit = new SCSIHD_NEC();
 			break;
 		case rasctl_dev_mo:
@@ -436,15 +430,18 @@ BOOL Command_Thread::DoAttach(FILE *fp, Rasctl_Command *incoming_command){
 		case rasctl_dev_scsi_hd:
 		case rasctl_dev_cd:
 		case rasctl_dev_scsi_hd_appl:
-		// Set the Path
-		filepath.SetPath(incoming_command->file);
+			if((incoming_command->file != nullptr) && (strnlen(incoming_command->file,_MAX_PATH) > 0)){
+				// Set the Path
+				filepath.SetPath(incoming_command->file);
 
-		// Open the file path
-		if (!pUnit->Open(filepath)) {
-			FPRT(fp, "Error : File open error [%s]\n", incoming_command->file);
-			delete pUnit;
-			return FALSE;
-		}
+				// Open the file path
+				if (!pUnit->Open(filepath)) {
+					FPRT(fp, "Error : File open error [%s]\n", incoming_command->file);
+					delete pUnit;
+					return FALSE;
+				}
+
+			}
 		break;
 		case rasctl_dev_br:
 		case rasctl_dev_invalid:
@@ -457,17 +454,17 @@ BOOL Command_Thread::DoAttach(FILE *fp, Rasctl_Command *incoming_command){
 	pUnit->SetCacheWB(FALSE);
 
 	// Map the controller
-	return Rascsi_Manager::GetInstance()->AttachDevice(fp, pUnit, incoming_command->id, incoming_command->un);
-	
+	return Rascsi_Manager::AttachDevice(fp, pUnit, incoming_command->id, incoming_command->un);	
 }
+
 BOOL Command_Thread::DoDetach(FILE *fp, Rasctl_Command *incoming_command){
-	return Rascsi_Manager::GetInstance()->DetachDevice(fp, incoming_command->id, incoming_command->un);
+	return Rascsi_Manager::DetachDevice(fp, incoming_command->id, incoming_command->un);
 }
 
 BOOL Command_Thread::DoInsert(FILE *fp, Rasctl_Command *incoming_command){
 
 	Filepath filepath;
-	Disk *pUnit = Rascsi_Manager::GetInstance()->GetDevice(fp, incoming_command->id, incoming_command->un);
+	Disk *pUnit = Rascsi_Manager::GetDevice(fp, incoming_command->id, incoming_command->un);
 
 
 	// Does the device exist?
@@ -495,7 +492,7 @@ BOOL Command_Thread::DoInsert(FILE *fp, Rasctl_Command *incoming_command){
 	return TRUE;
 }
 BOOL Command_Thread::DoEject(FILE *fp, Rasctl_Command *incoming_command){
-	Disk *pUnit = Rascsi_Manager::GetInstance()->GetDevice(fp, incoming_command->id, incoming_command->un);
+	Disk *pUnit = Rascsi_Manager::GetDevice(fp, incoming_command->id, incoming_command->un);
 
 	// Does the device exist?
 	if (pUnit == nullptr) {
@@ -515,7 +512,7 @@ BOOL Command_Thread::DoEject(FILE *fp, Rasctl_Command *incoming_command){
 
 BOOL Command_Thread::DoProtect(FILE *fp, Rasctl_Command *incoming_command){
 
-	Disk *pUnit = Rascsi_Manager::GetInstance()->GetDevice(fp, incoming_command->id, incoming_command->un);
+	Disk *pUnit = Rascsi_Manager::GetDevice(fp, incoming_command->id, incoming_command->un);
 
 	// Does the device exist?
 	if (pUnit == nullptr) {

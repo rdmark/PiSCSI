@@ -56,7 +56,6 @@
 FATFS fatfs;						// FatFS
 #else
 #endif	// BAREMETAL
-Rascsi_Manager *mgr;
 
 #ifndef CONNECT_DESC
 #define CONNECT_DESC "UNKNOWN"
@@ -71,7 +70,7 @@ Rascsi_Manager *mgr;
 void KillHandler(int sig)
 {
 	// Stop instruction
-	Command_Thread::Stop();
+	Rascsi_Manager::Stop();
 }
 #endif	// BAREMETAL
 
@@ -127,12 +126,11 @@ void Banner(int argc, char* argv[])
 //---------------------------------------------------------------------------
 BOOL Init()
 {
-	if(!Command_Thread::Init()){
+	if(!Rascsi_Manager::Init()){
 		return FALSE;
 	}
 
-	mgr = Rascsi_Manager::GetInstance();
-	if(!mgr->Init()){
+	if(!Command_Thread::Init()){
 		return FALSE;
 	}
 
@@ -157,7 +155,7 @@ BOOL Init()
 //---------------------------------------------------------------------------
 void Cleanup()
 {
-	mgr->Close();
+	Rascsi_Manager::Close();
 
 #ifndef BAREMETAL
 	Command_Thread::Close();
@@ -223,12 +221,9 @@ int main(int argc, char* argv[])
 #endif	// USE_SEL_EVENT_ENABLE
 #endif	// BAREMETAL
 
-	// Start execution
-	Command_Thread::Start();
-
 	// Main Loop
-	while (Command_Thread::IsRunning()) {
-		mgr->Step();
+	while (Rascsi_Manager::IsRunning()) {
+		Rascsi_Manager::Step();
 	}
 #ifdef BAREMETAL
 err_exit:
