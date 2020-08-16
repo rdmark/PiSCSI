@@ -37,7 +37,7 @@ SCSIBR::SCSIBR() : Disk()
 	// Host Bridge
 	disk.id = MAKEID('S', 'C', 'B', 'R');
 
-#if defined(RASCSI) && !defined(BAREMETAL)
+#if defined(RASCSI) && defined(__linux__) && !defined(BAREMETAL)
 	// TAP Driver Generation
 	tap = new CTapDriver();
 	m_bTapEnable = tap->Init();
@@ -1307,7 +1307,7 @@ void FASTCALL SCSIBR::FS_Ioctrl(BYTE *buf)
 
 	switch (nFunction) {
 		case 2:
-		case -2:
+		case (DWORD)-2:
 			pIoctrl->param = htonl(pIoctrl->param);
 			break;
 	}
@@ -1319,7 +1319,7 @@ void FASTCALL SCSIBR::FS_Ioctrl(BYTE *buf)
 			pIoctrl->media = htons(pIoctrl->media);
 			break;
 		case 1:
-		case -3:
+		case (DWORD)-3:
 			pIoctrl->param = htonl(pIoctrl->param);
 			break;
 	}

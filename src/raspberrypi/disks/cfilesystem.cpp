@@ -76,6 +76,7 @@ static void convert(char const *src, char const *dest,
 	const char *inbuf, char *outbuf, size_t outsize)
 #endif
 {
+#ifndef __APPLE__
 	iconv_t cd;
 	size_t in;
 	size_t out;
@@ -97,6 +98,7 @@ static void convert(char const *src, char const *dest,
 
 	iconv_close(cd);
 	*outbuf = '\0';
+#endif //ifndef __macintosh__
 }
 #else
 // Newlibの中にiconvが含まれてなかったので無変換
@@ -4548,7 +4550,7 @@ int CFileSys::Ioctrl(DWORD nUnit, DWORD nFunction, Human68k::ioctrl_t* pIoctrl)
 
 		case 2:
 			switch (pIoctrl->param) {
-				case -1:
+				case (DWORD)-1:
 					// メディア再認識
 					m_cEntry.isMediaOffline(nUnit);
 					return 0;
@@ -4560,17 +4562,17 @@ int CFileSys::Ioctrl(DWORD nUnit, DWORD nFunction, Human68k::ioctrl_t* pIoctrl)
 			}
 			break;
 
-		case -1:
+		case (DWORD)-1:
 			// 常駐判定
 			memcpy(pIoctrl->buffer, "WindrvXM", 8);
 			return 0;
 
-		case -2:
+		case (DWORD)-2:
 			// オプション設定
 			SetOption(pIoctrl->param);
 			return 0;
 
-		case -3:
+		case (DWORD)-3:
 			// オプション獲得
 			pIoctrl->param = GetOption();
 			return 0;
