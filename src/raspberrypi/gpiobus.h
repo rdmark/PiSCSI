@@ -572,7 +572,7 @@ private:
 
 	DWORD signals;						// All bus signals
 
-#if defined(USE_SEL_EVENT_ENABLE) && !defined(BAREMETAL)
+#if defined(USE_SEL_EVENT_ENABLE) && !defined(BAREMETAL) && defined(__linux__)
 	struct gpioevent_request selevreq;	// SEL signal event request
 
 	int epfd;							// epoll file descriptor

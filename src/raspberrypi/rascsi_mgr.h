@@ -31,6 +31,9 @@ class Rascsi_Manager{
     public:
         static Rascsi_Manager* GetInstance();
         void MapControler(FILE *fp, Disk **map);
+        void AttachDevice(FILE *fp, Disk *disk, int id, int ui);
+        void DetachDevice(FILE *fp, Disk *disk, int id, int ui);
+        Disk* GetDevice(FILE *fp, int id, int ui);
         void ListDevice(FILE *fp);
         BOOL Init();
         void Close();
@@ -58,5 +61,9 @@ class Rascsi_Manager{
         static Rascsi_Manager *m_instance;
         static BOOL m_active;
         static BOOL m_running;
+
+        // Any PUBLIC functions should lock this before accessing the m_ctrl
+        // m_disk or m_bus data structures. The Public functions could be
+        // called from a different thread.
         static std::timed_mutex m_locked;
 };

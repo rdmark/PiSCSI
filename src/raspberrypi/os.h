@@ -61,9 +61,11 @@
 #include <sys/mman.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#ifndef __APPLE__
 #include <sys/epoll.h>
-#include <netinet/in.h>
 #include <linux/gpio.h>
+#endif
+#include <netinet/in.h>
 #else
 #include <machine/endian.h>
 #define	htonl(_x)	__htonl(_x)
