@@ -1,10 +1,10 @@
 #include "rasctl_command.h"
 
-//const char* Rasctl_Command::m_delimiter = "\x1E"; // Record separator charater
-const char* Rasctl_Command::m_delimiter = " "; // Record separator charater
+const char* Rasctl_Command::m_delimiter = "\x1E"; // Record separator charater
+//const char* Rasctl_Command::m_delimiter = " "; // Record separator charater
 
 void Rasctl_Command::Serialize(BYTE *buff, int max_buff_size){
-    snprintf((char*)buff, max_buff_size, "%d%s%d%s%d%s%d%s%s%s",
+    snprintf((char*)buff, max_buff_size, "%d%s%d%s%d%s%d%s%s%s\n",
                 this->id, this->m_delimiter,
                 this->un, this->m_delimiter,
                 this->cmd, this->m_delimiter,
@@ -39,7 +39,7 @@ Rasctl_Command* Rasctl_Command::DeSerialize(BYTE* buff, int size){
                 return_command->un = atoi(cur_token);
             break;
             default:
-                for(int i=0; i<size; i++)
+                for(int i=0; i<strlen((char*)buff); i++)
                 {
                     snprintf(&err_message[i*2], sizeof(err_message), "%02X", buff[i]);
                 }
@@ -49,16 +49,18 @@ Rasctl_Command* Rasctl_Command::DeSerialize(BYTE* buff, int size){
             break;
         }
         cur_token_idx = (serial_token_order)((int)cur_token_idx + 1);
+        cur_token = strtok(NULL, m_delimiter);
     }
 
     if(cur_token_idx != serial_token_last_token)
     {
-        for(int i=0; i<size; i++)
+        for(int i=0; i<strlen((char*)buff); i++)
         {
             snprintf(&err_message[i*2], sizeof(err_message), "%02X", buff[i]);
         }
         printf("Received too few tokens: %s", err_message);
         free(return_command);
+        return nullptr;
     }
 
     return return_command;

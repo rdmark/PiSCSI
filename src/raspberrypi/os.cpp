@@ -7,7 +7,7 @@
 //---------------------------------------------------------------------------
 void FixCpu(int cpu)
 {
-#ifndef BAREMETAL
+#if !defined BAREMETAL && defined(__linux__)
 	cpu_set_t cpuset;
 	int cpus;
 

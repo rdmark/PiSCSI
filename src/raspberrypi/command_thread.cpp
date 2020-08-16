@@ -285,8 +285,10 @@ void *Command_Thread::MonThread(void *param)
 
 	// Scheduler Settings
 	schedparam.sched_priority = 0;
+#if defined(__linux__)
+	// sched_setscheduler is only available on Linux
 	sched_setscheduler(0, SCHED_IDLE, &schedparam);
-
+#endif
 	// Set the affinity to a specific processor core
 	FixCpu(2);
 
@@ -311,31 +313,27 @@ void *Command_Thread::MonThread(void *param)
 		fp = fdopen(fd, "r+");
 		p = fgets(buf, BUFSIZ, fp);
 
-		// Failed to get the command
-		if (!p) {
-			goto next;
-		}
+		// If we received a command....
+		if (p) {
 
-		// Remove the newline character
-		p[strlen(p) - 1] = 0;
+			// // Remove the newline character
+			// p[strlen(p) - 1] = 0;
 
-		// List all of the devices
-		if (xstrncasecmp(p, "list", 4) == 0) {
-			Rascsi_Manager::GetInstance()->ListDevice(fp);
-			goto next;
-		}
+			// // List all of the devices
+			// if (xstrncasecmp(p, "list", 4) == 0) {
+			// 	Rascsi_Manager::GetInstance()->ListDevice(fp);
+			// 	goto next;
+			// }
 
-		new_command = Rasctl_Command::DeSerialize((BYTE*)p,BUFSIZ);
+			new_command = Rasctl_Command::DeSerialize((BYTE*)p,BUFSIZ);
 
-		// // Wait until we becom idle
-		// while (m_running) {
-		// 	usleep(500 * 1000);
-		// }
+			if(new_command != nullptr){
+				// Execute the command
+				ExecuteCommand(fp, new_command);
+			}
 
-		// Execute the command
-		ExecuteCommand(fp, new_command);
+	}
 
-next:
 		// Release the connection
 		fclose(fp);
 		close(fd);
@@ -539,17 +537,16 @@ BOOL Command_Thread::ExecuteCommand(FILE *fp, Rasctl_Command *incoming_command)
 
 
 BOOL Command_Thread::DoShutdown(FILE *fp, Rasctl_Command *incoming_command){return FALSE;}
-BOOL Command_Thread::DoList(FILE *fp, Rasctl_Command *incoming_command){return FALSE;}
-BOOL Command_Thread::DoAttach(FILE *fp, Rasctl_Command *incoming_command){return FALSE;}
-BOOL Command_Thread::DoDetach(FILE *fp, Rasctl_Command *incoming_command){return FALSE;}
-BOOL Command_Thread::DoInsert(FILE *fp, Rasctl_Command *incoming_command){return FALSE;}
-BOOL Command_Thread::DoEject(FILE *fp, Rasctl_Command *incoming_command){return FALSE;}
-BOOL Command_Thread::DoProtect(FILE *fp, Rasctl_Command *incoming_command){return FALSE;}
 
+BOOL Command_Thread::DoList(FILE *fp, Rasctl_Command *incoming_command){
+	Rascsi_Manager::GetInstance()->ListDevice(fp);
+	return TRUE;
+}
+BOOL Command_Thread::DoAttach(FILE *fp, Rasctl_Command *incoming_command){
+	Filepath filepath;
+	Disk *pUnit = nullptr;
 
-// BOOL Command_Thread::DoAttach(File *fp, Rasctl_Command *incoming_command){
-
-// 	// Connect Command
+	 	// Connect Command
 // 	if (cmd == rasctl_cmd_attach) {					// ATTACH
 // 		// Distinguish between SASI and SCSI
 // 		ext = NULL;
@@ -557,67 +554,72 @@ BOOL Command_Thread::DoProtect(FILE *fp, Rasctl_Command *incoming_command){retur
 
 // 		}
 
-// 		// Create a new drive, based upon type
-// 		switch (type) {
-// 			case 0:		// HDF
-// 				pUnit = new SASIHD();
-// 				break;
-// 			case 1:		// HDS/HDN/HDI/NHD/HDA
-// 				if (ext == NULL) {
-// 					break;
-// 				}
-// 				if (xstrcasecmp(ext, "hdn") == 0 ||
-// 					xstrcasecmp(ext, "hdi") == 0 || xstrcasecmp(ext, "nhd") == 0) {
-// 					pUnit = new SCSIHD_NEC();
-// 				} else if (xstrcasecmp(ext, "hda") == 0) {
-// 					pUnit = new SCSIHD_APPLE();
-// 				} else {
-// 					pUnit = new SCSIHD();
-// 				}
-// 				break;
-// 			case 2:		// MO
-// 				pUnit = new SCSIMO();
-// 				break;
-// 			case 3:		// CD
-// 				pUnit = new SCSICD();
-// 				break;
-// 			case 4:		// BRIDGE
-// 				pUnit = new SCSIBR();
-// 				break;
-// 			default:
-// 				FPRT(fp,	"Error : Invalid device type\n");
-// 				return FALSE;
-// 		}
+		// Create a new drive, based upon type
+		switch (incoming_command->type) {
+			case rasctl_dev_sasi_hd:		// HDF
+				pUnit = new SASIHD();
+				break;
+			case rasctl_dev_scsi_hd:		// HDS/HDN/HDI/NHD/HDA
+				pUnit = new SCSIHD();
+				break;
+			case rasctl_dev_scsi_hd_appl:
+				pUnit = new SCSIHD_APPLE();
+				break;
+			case rasctl_dev_scsi_hd_nec:
+				pUnit = new SCSIHD_NEC();
+				break;
+			case rasctl_dev_mo:
+				pUnit = new SCSIMO();
+				break;
+			case rasctl_dev_cd:
+				pUnit = new SCSICD();
+				break;
+			case rasctl_dev_br:
+				pUnit = new SCSIBR();
+				break;
+			default:
+				FPRT(fp,	"Error : Invalid device type\n");
+				return FALSE;
+		}
 
-// 		// drive checks files
-// 		if (type <= 1 || (type <= 3 && xstrcasecmp(file, "-") != 0)) {
-// 			// Set the Path
-// 			filepath.SetPath(file);
+		// drive checks files
+		switch(incoming_command->type){
+			case rasctl_dev_mo:
+			case rasctl_dev_scsi_hd_nec:
+			case rasctl_dev_sasi_hd:
+			case rasctl_dev_scsi_hd:
+			case rasctl_dev_cd:
+			case rasctl_dev_scsi_hd_appl:
+			// Set the Path
+			filepath.SetPath(incoming_command->file);
 
-// 			// Open the file path
-// 			if (!pUnit->Open(filepath)) {
-// 				FPRT(fp, "Error : File open error [%s]\n", file);
-// 				delete pUnit;
-// 				return FALSE;
-// 			}
-// 		}
+			// Open the file path
+			if (!pUnit->Open(filepath)) {
+				FPRT(fp, "Error : File open error [%s]\n", incoming_command->file);
+				delete pUnit;
+				return FALSE;
+			}
+			break;
+			case rasctl_dev_br:
+			case rasctl_dev_invalid:
+				// Do nothing
+			break;
+		}
 
-// 		// Set the cache to write-through
-// 		pUnit->SetCacheWB(FALSE);
+
+		// Set the cache to write-through
+		pUnit->SetCacheWB(FALSE);
 
 // 		// Replace with the newly created unit
 // 		map[id * Rascsi_Manager::GetInstance()->UnitNum + un] = pUnit;
 
-// 		// Re-map the controller
-// 		Rascsi_Manager::GetInstance()->MapControler(fp, map);
-// 		return TRUE;
-// 	}
-
-// 	// Is this a valid command?
-// 	if (cmd > 4) {
-// 		FPRT(fp, "Error : Invalid command\n");
-// 		return FALSE;
-// 	}
+		// Map the controller
+		Rascsi_Manager::GetInstance()->MapControler(fp, map);
+		return TRUE;
+	
+	
+	return FALSE;}
+BOOL Command_Thread::DoDetach(FILE *fp, Rasctl_Command *incoming_command){
 
 // 	// Does the controller exist?
 // 	if (Rascsi_Manager::GetInstance()->m_ctrl[id] == NULL) {
@@ -632,7 +634,7 @@ BOOL Command_Thread::DoProtect(FILE *fp, Rasctl_Command *incoming_command){retur
 // 		return FALSE;
 // 	}
 
-// 	// Disconnect Command
+	// 	// Disconnect Command
 // 	if (cmd == 1) {					// DETACH
 // 		// Free the existing unit
 // 		map[id * Rascsi_Manager::GetInstance()->UnitNum + un] = NULL;
@@ -641,44 +643,92 @@ BOOL Command_Thread::DoProtect(FILE *fp, Rasctl_Command *incoming_command){retur
 // 		Rascsi_Manager::GetInstance()->MapControler(fp, map);
 // 		return TRUE;
 // 	}
+	
+	return FALSE;}
+BOOL Command_Thread::DoInsert(FILE *fp, Rasctl_Command *incoming_command){
 
-// 	// Valid only for MO or CD
+
+	// 	// Does the controller exist?
+	// if (Rascsi_Manager::GetInstance()->m_ctrl[id] == NULL) {
+	// 	FPRT(fp, "Error : No such device\n");
+	// 	return FALSE;
+	// }
+
+	// // Does the unit exist?
+	// pUnit = Rascsi_Manager::GetInstance()->m_disk[id * Rascsi_Manager::GetInstance()->UnitNum + un];
+	// if (pUnit == NULL) {
+	// 	FPRT(fp, "Error : No such device\n");
+	// 	return FALSE;
+	// }
+
+	// 	// Valid only for MO or CD
+	// if (pUnit->GetID() != MAKEID('S', 'C', 'M', 'O') &&
+	// 	pUnit->GetID() != MAKEID('S', 'C', 'C', 'D')) {
+	// 	FPRT(fp, "Error : Operation denied(Deveice isn't removable)\n");
+	// 	return FALSE;
+	// }
+
+	// 	case 2:						// INSERT
+	// 		// Set the file path
+	// 		filepath.SetPath(file);
+
+	// 		// Open the file
+	// 		if (!pUnit->Open(filepath)) {
+	// 			FPRT(fp, "Error : File open error [%s]\n", file);
+	// 			return FALSE;
+	// 		}
+	// 		break;
+
+
+	
+	return FALSE;
+}
+BOOL Command_Thread::DoEject(FILE *fp, Rasctl_Command *incoming_command){
+	
+// 	// Does the controller exist?
+// 	if (Rascsi_Manager::GetInstance()->m_ctrl[id] == NULL) {
+// 		FPRT(fp, "Error : No such device\n");
+// 		return FALSE;
+// 	}
+
+// 	// Does the unit exist?
+// 	pUnit = Rascsi_Manager::GetInstance()->m_disk[id * Rascsi_Manager::GetInstance()->UnitNum + un];
+// 	if (pUnit == NULL) {
+// 		FPRT(fp, "Error : No such device\n");
+// 		return FALSE;
+// 	}
+
+	// 	// Valid only for MO or CD
 // 	if (pUnit->GetID() != MAKEID('S', 'C', 'M', 'O') &&
 // 		pUnit->GetID() != MAKEID('S', 'C', 'C', 'D')) {
 // 		FPRT(fp, "Error : Operation denied(Deveice isn't removable)\n");
 // 		return FALSE;
 // 	}
-
-// 	switch (cmd) {
-// 		case 2:						// INSERT
-// 			// Set the file path
-// 			filepath.SetPath(file);
-
-// 			// Open the file
-// 			if (!pUnit->Open(filepath)) {
-// 				FPRT(fp, "Error : File open error [%s]\n", file);
-// 				return FALSE;
-// 			}
-// 			break;
-
 // 		case 3:						// EJECT
 // 			pUnit->Eject(TRUE);
 // 			break;
-
-// 		case 4:						// PROTECT
+	return FALSE;}
+BOOL Command_Thread::DoProtect(FILE *fp, Rasctl_Command *incoming_command){
+	
+	// 		case 4:						// PROTECT
 // 			if (pUnit->GetID() != MAKEID('S', 'C', 'M', 'O')) {
 // 				FPRT(fp, "Error : Operation denied(Deveice isn't MO)\n");
 // 				return FALSE;
 // 			}
 // 			pUnit->WriteP(!pUnit->IsWriteP());
 // 			break;
-// 		default:
-// 			ASSERT(FALSE);
-// 			return FALSE;
-// 	}
+	
+	return FALSE;}
 
-// 	return TRUE;
-// }
+
+
+
+
+
+
+
+
+
 
 BOOL Command_Thread::HasSuffix(const char* string, const char* suffix) {
 	int string_len = strlen(string);

@@ -202,7 +202,7 @@ int main(int argc, char* argv[])
     // Set the affinity to a specific processor core
 	FixCpu(3);
 
-#ifdef USE_SEL_EVENT_ENABLE
+#if defined(USE_SEL_EVENT_ENABLE) && defined(__linux__)
 	// Scheduling policy setting (highest priority)
 	schparam.sched_priority = sched_get_priority_max(SCHED_FIFO);
 	sched_setscheduler(0, SCHED_FIFO, &schparam);

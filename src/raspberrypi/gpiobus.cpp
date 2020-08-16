@@ -1215,7 +1215,7 @@ int FASTCALL GPIOBUS::PollSelectEvent()
 {
 	// clear errno
 	errno = 0;
-
+#if !defined(__x86_64__) && !defined(__X86__)
 #ifdef BAREMETAL
 	// Enable interrupts
 	EnableInterrupts();
@@ -1235,6 +1235,7 @@ int FASTCALL GPIOBUS::PollSelectEvent()
 
 	read(selevreq.fd, &gpev, sizeof(gpev));
 #endif	// BAREMETAL
+#endif  // !__x86_64 
 
 	return 0;
 }
@@ -1506,6 +1507,9 @@ BOOL FASTCALL GPIOBUS::WaitSignal(int pin, BOOL ast)
 //---------------------------------------------------------------------------
 void FASTCALL GPIOBUS::DisableIRQ()
 {
+#if defined(__x86_64__) || defined(__X86__)
+	return;
+#else
 #ifndef BAREMETAL
 	if (rpitype == 4) {
 		// RPI4 is disabled by GICC
@@ -1522,6 +1526,7 @@ void FASTCALL GPIOBUS::DisableIRQ()
 		irpctl[IRPT_DIS_IRQ_1] = irptenb & 0xf;
 	}
 #endif	// BAREMETAL
+#endif // ifdef __x86_64__ || __X86__
 }
 
 //---------------------------------------------------------------------------

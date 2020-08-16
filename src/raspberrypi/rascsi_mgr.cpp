@@ -25,6 +25,123 @@ Rascsi_Manager* Rascsi_Manager::GetInstance(){
 	return m_instance;
 }
 
+
+void Rascsi_Manager::AttachDevice(FILE *fp, Disk *disk, int id, int unit_num){
+	int unitno = (id * UnitNum) + unit_num;
+
+	// Get the lock
+	m_locked.lock();
+
+	// Check if something already exists at that SCSI ID / Unit Number
+	if (m_disk[unitno]) {
+		// Disconnect it from the controller
+		if (m_ctrl[i]) {
+			m_ctrl[i]->SetUnit(j, NULL);
+		}else{
+			printf("Warning: A controller was not connected to the drive at id %d un %d\n",id, unit_num);
+		}
+
+		// Free the Unit
+		delete m_disk[unitno];
+	}
+
+	// Add the new unit
+	m_disk[unitno] = disk;
+
+	// Reconfigure all of the controllers
+	for (i = 0; i < CtrlMax; i++) {
+		// Examine the unit configuration
+		sasi_num = 0;
+		scsi_num = 0;
+		for (j = 0; j < UnitNum; j++) {
+			unitno = i * UnitNum + j;
+			// branch by unit type
+			if (m_disk[unitno]) {
+				if (m_disk[unitno]->IsSASI()) {
+					// Drive is SASI, so increment SASI count
+					sasi_num++;
+				} else {
+					// Drive is SCSI, so increment SCSI count
+					scsi_num++;
+				}
+			}
+
+			// Remove the unit
+			if (m_ctrl[i]) {
+				m_ctrl[i]->SetUnit(j, NULL);
+			}
+		}
+
+		// If there are no units connected
+		if (sasi_num == 0 && scsi_num == 0) {
+			if (m_ctrl[i]) {
+				delete m_ctrl[i];
+				m_ctrl[i] = NULL;
+				continue;
+			}
+		}
+
+		// Mixture of SCSI and SASI
+		if (sasi_num > 0 && scsi_num > 0) {
+			FPRT(fp, "Error : SASI and SCSI can't be mixed\n");
+			continue;
+		}
+
+		if (sasi_num > 0) {
+			// Only SASI Unit(s)
+
+			// Release the controller if it is not SASI
+			if (m_ctrl[i] && !m_ctrl[i]->IsSASI()) {
+				delete m_ctrl[i];
+				m_ctrl[i] = NULL;
+			}
+
+			// Create a new SASI controller
+			if (!m_ctrl[i]) {
+				m_ctrl[i] = new SASIDEV();
+				m_ctrl[i]->Connect(i, m_bus);
+			}
+		} else {
+			// Only SCSI Unit(s)
+
+			// Release the controller if it is not SCSI
+			if (m_ctrl[i] && !m_ctrl[i]->IsSCSI()) {
+				delete m_ctrl[i];
+				m_ctrl[i] = NULL;
+			}
+
+			// Create a new SCSI controller
+			if (!m_ctrl[i]) {
+				m_ctrl[i] = new SCSIDEV();
+				m_ctrl[i]->Connect(i, m_bus);
+			}
+		}
+
+		// connect all units
+		for (j = 0; j < UnitNum; j++) {
+			unitno = i * UnitNum + j;
+			if (m_disk[unitno]) {
+				// Add the unit connection
+				m_ctrl[i]->SetUnit(j, m_disk[unitno]);
+			}
+		}
+	}
+
+
+
+		}
+        void Rascsi_Manager::DetachDevice(FILE *fp, Disk *map, int id, int ui)
+		{
+			return;
+		}
+        Disk* Rascsi_Manager::GetDevice(FILE *fp, int id, int ui)
+		{
+			return nullptr;
+
+		}
+
+
+
 //---------------------------------------------------------------------------
 //
 //	Controller Mapping

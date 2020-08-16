@@ -121,8 +121,10 @@ BOOL FASTCALL Fileio::Open(LPCTSTR fname, OpenMode mode, BOOL directIO)
 		return FALSE;
 	}
 
+#ifndef __APPLE__
 	// デフォルトモード
 	omode = directIO ? O_DIRECT : 0;
+#endif // ifndef __APPLE__
 
 	// モード別
 	switch (mode) {
