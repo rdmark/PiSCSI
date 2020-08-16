@@ -94,8 +94,6 @@ $(OBJDIR) $(BINDIR):
 	mkdir -p $@
 
 $(OBJDIR)/%.o: %.cpp $(OBJDIR)
-	@echo "SRC_RASCSI: " $(SRC_RASCSI)
-	@echo "OBJ_RASCSI: " $(OBJ_RASCSI)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # $(OBJDIR)/%.o: %.c
