@@ -16,7 +16,7 @@ else
 	BUILD_TYPE = Release
 endif
 CFLAGS += -Idisks -Icontrollers -I.
-CXXFLAGS += -Idisks -Icontrollers -I.
+CXXFLAGS += -Idisks -Icontrollers -I. -std=c++14
 
 # If its not specified, build for STANDARD configuration
 CONNECT_TYPE ?= STANDARD
