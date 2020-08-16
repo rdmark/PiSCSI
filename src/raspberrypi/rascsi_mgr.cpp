@@ -73,6 +73,7 @@ BOOL Rascsi_Manager::AttachDevicePrivate(FILE *fp, Disk *disk, int id, int unit_
 
 	// Add the disk to the controller
 	m_ctrl[id]->SetUnit(unit_num, disk);
+	return TRUE;
 }
 
 BOOL Rascsi_Manager::DetachDevicePrivate(FILE *fp, int id, int unit_num)

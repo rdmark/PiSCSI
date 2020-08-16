@@ -220,8 +220,9 @@ int main(int argc, char* argv[])
 	while (Command_Thread::IsRunning()) {
 		mgr->Step();
 	}
-
+#ifdef BAREMETAL
 err_exit:
+#endif
 	// Cleanup
 	Cleanup();
 

@@ -343,154 +343,6 @@ void *Command_Thread::MonThread(void *param)
 	return NULL;
 }
 
-BOOL ValidateCommand(rasctl_command *cmd){
-
-
-
-
-
-
-
-
-
-
-
-
-
-// BOOL Command_Thread::ParseArgument(int argc, char* argv[])
-// {
-// 	int id = -1;
-// 	bool is_sasi = false;
-// 	int max_id = 7;
-
-// 	int opt;
-// 	while ((opt = getopt(argc, argv, "-IiHhD:d:")) != -1) {
-// 		switch (opt) {
-// 			case 'I':
-// 			case 'i':
-// 				is_sasi = false;
-// 				max_id = 7;
-// 				id = -1;
-// 				continue;
-
-// 			case 'H':
-// 			case 'h':
-// 				is_sasi = true;
-// 				max_id = 15;
-// 				id = -1;
-// 				continue;
-
-// 			case 'D':
-// 			case 'd': {
-// 				char* end;
-// 				id = strtol(optarg, &end, 10);
-// 				if ((id < 0) || (max_id < id)) {
-// 					fprintf(stderr, "%s: invalid %s (0-%d)\n",
-// 							optarg, is_sasi ? "HD" : "ID", max_id);
-// 					return false;
-// 				}
-// 				break;
-// 			}
-
-// 			default:
-// 				return false;
-
-// 			case 1:
-// 				break;
-// 		}
-
-// 		if (id < 0) {
-// 			fprintf(stderr, "%s: ID not specified\n", optarg);
-// 			return false;
-// 		} else if (Rascsi_Manager::GetInstance()->m_disk[id] && !Rascsi_Manager::GetInstance()->m_disk[id]->IsNULL()) {
-// 			fprintf(stderr, "%d: duplicate ID\n", id);
-// 			return false;
-// 		}
-
-// 		char* path = optarg;
-// 		int type = -1;
-// 		if (HasSuffix(path, ".hdf")
-// 			|| HasSuffix(path, ".hds")
-// 			|| HasSuffix(path, ".hdn")
-// 			|| HasSuffix(path, ".hdi")
-// 			|| HasSuffix(path, ".hda")
-// 			|| HasSuffix(path, ".nhd")) {
-// 			type = 0;
-// 		} else if (HasSuffix(path, ".mos")) {
-// 			type = 2;
-// 		} else if (HasSuffix(path, ".iso")) {
-// 			type = 3;
-// 		} else if (xstrcasecmp(path, "bridge") == 0) {
-// 			type = 4;
-// 		} else {
-// 			// Cannot determine the file type
-// 			fprintf(stderr,
-// 					"%s: unknown file extension\n", path);
-// 			return false;
-// 		}
-
-// 		int un = 0;
-// 		if (is_sasi) {
-// 			un = id % Rascsi_Manager::UnitNum;
-// 			id /= Rascsi_Manager::UnitNum;
-// 		}
-
-// 		// Execute the command
-// 		if (!ExecuteCommand(stderr, id, un, 0, type, path)) {
-// 			return false;
-// 		}
-// 		id = -1;
-// 	}
-
-// 	// Display the device list
-// 	Rascsi_Manager::GetInstance()->ListDevice(stdout);
-// 	return true;
-// }
-
-
-
-
-
-
-		// if (type == 0) {
-		// 	// Passed the check
-		// 	if (!file) {
-		// 		return FALSE;
-		// 	}
-
-		// 	// Check that command is at least 5 characters long
-		// 	len = strlen(file);
-		// 	if (len < 5) {
-		// 		return FALSE;
-		// 	}
-
-		// 	// Check the extension
-		// 	if (file[len - 4] != '.') {
-		// 		return FALSE;
-		// 	}
-
-		// 	// If the extension is not SASI type, replace with SCSI
-		// 	ext = &file[len - 3];
-		// 	if (xstrcasecmp(ext, "hdf") != 0) {
-		// 		type = 1;
-		// 	}
-
-	// // Check the Controller Number
-	// if (cmd->id < 0 || id >= Rascsi_Manager::GetInstance()->CtrlMax) {
-	// 	FPRT(fp, "Error : Invalid ID\n");
-	// 	return FALSE;
-	// }
-
-	// // Check the Unit Number
-	// if (cmd->un < 0 || un >= Rascsi_Manager::GetInstance()->UnitNum) {
-	// 	FPRT(fp, "Error : Invalid unit number\n");
-	// 	return FALSE;
-	// }
-
-return FALSE;
-	
-}
-
 
 //---------------------------------------------------------------------------
 //
@@ -534,27 +386,19 @@ BOOL Command_Thread::ExecuteCommand(FILE *fp, Rasctl_Command *incoming_command)
 	return result;
 }
 
-
-
 BOOL Command_Thread::DoShutdown(FILE *fp, Rasctl_Command *incoming_command){
 	m_running = FALSE;
+	return TRUE;
 }
 
 BOOL Command_Thread::DoList(FILE *fp, Rasctl_Command *incoming_command){
 	Rascsi_Manager::GetInstance()->ListDevice(fp);
 	return TRUE;
 }
+
 BOOL Command_Thread::DoAttach(FILE *fp, Rasctl_Command *incoming_command){
 	Filepath filepath;
 	Disk *pUnit = nullptr;
-
-	 	// Connect Command
-// 	if (cmd == rasctl_cmd_attach) {					// ATTACH
-// 		// Distinguish between SASI and SCSI
-// 		ext = NULL;
-// 		pUnit = NULL;
-
-// 		}
 
 	// Create a new drive, based upon type
 	switch (incoming_command->type) {
@@ -622,78 +466,71 @@ BOOL Command_Thread::DoDetach(FILE *fp, Rasctl_Command *incoming_command){
 
 BOOL Command_Thread::DoInsert(FILE *fp, Rasctl_Command *incoming_command){
 
-
-	// 	// Does the controller exist?
-	// if (Rascsi_Manager::GetInstance()->m_ctrl[id] == NULL) {
-	// 	FPRT(fp, "Error : No such device\n");
-	// 	return FALSE;
-	// }
-
-	// // Does the unit exist?
-	// pUnit = Rascsi_Manager::GetInstance()->m_disk[id * Rascsi_Manager::GetInstance()->UnitNum + un];
-	// if (pUnit == NULL) {
-	// 	FPRT(fp, "Error : No such device\n");
-	// 	return FALSE;
-	// }
-
-	// 	// Valid only for MO or CD
-	// if (pUnit->GetID() != MAKEID('S', 'C', 'M', 'O') &&
-	// 	pUnit->GetID() != MAKEID('S', 'C', 'C', 'D')) {
-	// 	FPRT(fp, "Error : Operation denied(Deveice isn't removable)\n");
-	// 	return FALSE;
-	// }
-
-	// 	case 2:						// INSERT
-	// 		// Set the file path
-	// 		filepath.SetPath(file);
-
-	// 		// Open the file
-	// 		if (!pUnit->Open(filepath)) {
-	// 			FPRT(fp, "Error : File open error [%s]\n", file);
-	// 			return FALSE;
-	// 		}
-	// 		break;
+	Filepath filepath;
+	Disk *pUnit = Rascsi_Manager::GetInstance()->GetDevice(fp, incoming_command->id, incoming_command->un);
 
 
+	// Does the device exist?
+	if (pUnit == nullptr) {
+		FPRT(fp, "Error : No such device\n");
+		return FALSE;
+	}
+
+	// Valid only for MO or CD
+	if (pUnit->GetID() != MAKEID('S', 'C', 'M', 'O') &&
+		pUnit->GetID() != MAKEID('S', 'C', 'C', 'D')) {
+		FPRT(fp, "Error : Insert operation denied(Device isn't removable)\n");
+		return FALSE;
+	}
+
+	// Set the file path
+	filepath.SetPath(incoming_command->file);
+
+	// Open the file
+	if (!pUnit->Open(filepath)) {
+		FPRT(fp, "Error : File open error [%s]\n", incoming_command->file);
+		return FALSE;
+	}
 	
-	return FALSE;
+	return TRUE;
 }
 BOOL Command_Thread::DoEject(FILE *fp, Rasctl_Command *incoming_command){
-	
-// 	// Does the controller exist?
-// 	if (Rascsi_Manager::GetInstance()->m_ctrl[id] == NULL) {
-// 		FPRT(fp, "Error : No such device\n");
-// 		return FALSE;
-// 	}
+	Disk *pUnit = Rascsi_Manager::GetInstance()->GetDevice(fp, incoming_command->id, incoming_command->un);
 
-// 	// Does the unit exist?
-// 	pUnit = Rascsi_Manager::GetInstance()->m_disk[id * Rascsi_Manager::GetInstance()->UnitNum + un];
-// 	if (pUnit == NULL) {
-// 		FPRT(fp, "Error : No such device\n");
-// 		return FALSE;
-// 	}
+	// Does the device exist?
+	if (pUnit == nullptr) {
+		FPRT(fp, "Error : No such device\n");
+		return FALSE;
+	}
 
-	// 	// Valid only for MO or CD
-// 	if (pUnit->GetID() != MAKEID('S', 'C', 'M', 'O') &&
-// 		pUnit->GetID() != MAKEID('S', 'C', 'C', 'D')) {
-// 		FPRT(fp, "Error : Operation denied(Deveice isn't removable)\n");
-// 		return FALSE;
-// 	}
-// 		case 3:						// EJECT
-// 			pUnit->Eject(TRUE);
-// 			break;
-	return FALSE;}
+	// Valid only for MO or CD
+	if (pUnit->GetID() != MAKEID('S', 'C', 'M', 'O') &&
+		pUnit->GetID() != MAKEID('S', 'C', 'C', 'D')) {
+		FPRT(fp, "Error : Operation denied(Deveice isn't removable)\n");
+		return FALSE;
+	}
+	pUnit->Eject(TRUE);
+	return TRUE;
+}
+
 BOOL Command_Thread::DoProtect(FILE *fp, Rasctl_Command *incoming_command){
-	
-	// 		case 4:						// PROTECT
-// 			if (pUnit->GetID() != MAKEID('S', 'C', 'M', 'O')) {
-// 				FPRT(fp, "Error : Operation denied(Deveice isn't MO)\n");
-// 				return FALSE;
-// 			}
-// 			pUnit->WriteP(!pUnit->IsWriteP());
-// 			break;
-	
-	return FALSE;}
+
+	Disk *pUnit = Rascsi_Manager::GetInstance()->GetDevice(fp, incoming_command->id, incoming_command->un);
+
+	// Does the device exist?
+	if (pUnit == nullptr) {
+		FPRT(fp, "Error : No such device\n");
+		return FALSE;
+	}
+
+	// Valid only for MO
+	if (pUnit->GetID() != MAKEID('S', 'C', 'M', 'O')) {
+		FPRT(fp, "Error : Write Protect denied(Device isn't a MO drive)\n");
+		return FALSE;
+	}
+	pUnit->WriteP(!pUnit->IsWriteP());
+	return TRUE;
+}
 
 
 

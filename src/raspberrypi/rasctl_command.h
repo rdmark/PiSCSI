@@ -42,6 +42,8 @@ class Rasctl_Command{
     public:
         void Serialize(BYTE *buff, int max_buff_size);
         static Rasctl_Command* DeSerialize(BYTE* buff, int size);
+        BOOL IsValid(FILE *fp);
+
 
         rasctl_command cmd = rasctl_cmd_invalid;
         rasctl_dev_type type = rasctl_dev_invalid;
