@@ -239,6 +239,8 @@ public:
 										// NULL check
 	BOOL FASTCALL IsSASI() const;
 										// SASI Check
+	BOOL FASTCALL IsSCSI() const;
+										// SASI Check
 
 	// Media Operations
 	virtual BOOL FASTCALL Open(const Filepath& path, BOOL attn = TRUE);

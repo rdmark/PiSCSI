@@ -536,7 +536,9 @@ BOOL Command_Thread::ExecuteCommand(FILE *fp, Rasctl_Command *incoming_command)
 
 
 
-BOOL Command_Thread::DoShutdown(FILE *fp, Rasctl_Command *incoming_command){return FALSE;}
+BOOL Command_Thread::DoShutdown(FILE *fp, Rasctl_Command *incoming_command){
+	m_running = FALSE;
+}
 
 BOOL Command_Thread::DoList(FILE *fp, Rasctl_Command *incoming_command){
 	Rascsi_Manager::GetInstance()->ListDevice(fp);
@@ -554,97 +556,70 @@ BOOL Command_Thread::DoAttach(FILE *fp, Rasctl_Command *incoming_command){
 
 // 		}
 
-		// Create a new drive, based upon type
-		switch (incoming_command->type) {
-			case rasctl_dev_sasi_hd:		// HDF
-				pUnit = new SASIHD();
-				break;
-			case rasctl_dev_scsi_hd:		// HDS/HDN/HDI/NHD/HDA
-				pUnit = new SCSIHD();
-				break;
-			case rasctl_dev_scsi_hd_appl:
-				pUnit = new SCSIHD_APPLE();
-				break;
-			case rasctl_dev_scsi_hd_nec:
-				pUnit = new SCSIHD_NEC();
-				break;
-			case rasctl_dev_mo:
-				pUnit = new SCSIMO();
-				break;
-			case rasctl_dev_cd:
-				pUnit = new SCSICD();
-				break;
-			case rasctl_dev_br:
-				pUnit = new SCSIBR();
-				break;
-			default:
-				FPRT(fp,	"Error : Invalid device type\n");
-				return FALSE;
-		}
-
-		// drive checks files
-		switch(incoming_command->type){
-			case rasctl_dev_mo:
-			case rasctl_dev_scsi_hd_nec:
-			case rasctl_dev_sasi_hd:
-			case rasctl_dev_scsi_hd:
-			case rasctl_dev_cd:
-			case rasctl_dev_scsi_hd_appl:
-			// Set the Path
-			filepath.SetPath(incoming_command->file);
-
-			// Open the file path
-			if (!pUnit->Open(filepath)) {
-				FPRT(fp, "Error : File open error [%s]\n", incoming_command->file);
-				delete pUnit;
-				return FALSE;
-			}
+	// Create a new drive, based upon type
+	switch (incoming_command->type) {
+		case rasctl_dev_sasi_hd:		// HDF
+			pUnit = new SASIHD();
 			break;
-			case rasctl_dev_br:
-			case rasctl_dev_invalid:
-				// Do nothing
+		case rasctl_dev_scsi_hd:		// HDS/HDN/HDI/NHD/HDA
+			pUnit = new SCSIHD();
 			break;
+		case rasctl_dev_scsi_hd_appl:
+			pUnit = new SCSIHD_APPLE();
+			break;
+		case rasctl_dev_scsi_hd_nec:
+			pUnit = new SCSIHD_NEC();
+			break;
+		case rasctl_dev_mo:
+			pUnit = new SCSIMO();
+			break;
+		case rasctl_dev_cd:
+			pUnit = new SCSICD();
+			break;
+		case rasctl_dev_br:
+			pUnit = new SCSIBR();
+			break;
+		default:
+			FPRT(fp,	"Error : Invalid device type\n");
+			return FALSE;
+	}
+
+	// drive checks files
+	switch(incoming_command->type){
+		case rasctl_dev_mo:
+		case rasctl_dev_scsi_hd_nec:
+		case rasctl_dev_sasi_hd:
+		case rasctl_dev_scsi_hd:
+		case rasctl_dev_cd:
+		case rasctl_dev_scsi_hd_appl:
+		// Set the Path
+		filepath.SetPath(incoming_command->file);
+
+		// Open the file path
+		if (!pUnit->Open(filepath)) {
+			FPRT(fp, "Error : File open error [%s]\n", incoming_command->file);
+			delete pUnit;
+			return FALSE;
 		}
+		break;
+		case rasctl_dev_br:
+		case rasctl_dev_invalid:
+			// Do nothing
+		break;
+	}
 
 
-		// Set the cache to write-through
-		pUnit->SetCacheWB(FALSE);
+	// Set the cache to write-through
+	pUnit->SetCacheWB(FALSE);
 
-// 		// Replace with the newly created unit
-// 		map[id * Rascsi_Manager::GetInstance()->UnitNum + un] = pUnit;
-
-		// Map the controller
-		Rascsi_Manager::GetInstance()->MapControler(fp, map);
-		return TRUE;
+	// Map the controller
+	return Rascsi_Manager::GetInstance()->AttachDevice(fp, pUnit, incoming_command->id, incoming_command->un);
 	
-	
-	return FALSE;}
+}
 BOOL Command_Thread::DoDetach(FILE *fp, Rasctl_Command *incoming_command){
+	return Rascsi_Manager::GetInstance()->DetachDevice(fp, incoming_command->id, incoming_command->un);
+}
 
-// 	// Does the controller exist?
-// 	if (Rascsi_Manager::GetInstance()->m_ctrl[id] == NULL) {
-// 		FPRT(fp, "Error : No such device\n");
-// 		return FALSE;
-// 	}
-
-// 	// Does the unit exist?
-// 	pUnit = Rascsi_Manager::GetInstance()->m_disk[id * Rascsi_Manager::GetInstance()->UnitNum + un];
-// 	if (pUnit == NULL) {
-// 		FPRT(fp, "Error : No such device\n");
-// 		return FALSE;
-// 	}
-
-	// 	// Disconnect Command
-// 	if (cmd == 1) {					// DETACH
-// 		// Free the existing unit
-// 		map[id * Rascsi_Manager::GetInstance()->UnitNum + un] = NULL;
-
-// 		// Re-map the controller
-// 		Rascsi_Manager::GetInstance()->MapControler(fp, map);
-// 		return TRUE;
-// 	}
-	
-	return FALSE;}
 BOOL Command_Thread::DoInsert(FILE *fp, Rasctl_Command *incoming_command){
 
 

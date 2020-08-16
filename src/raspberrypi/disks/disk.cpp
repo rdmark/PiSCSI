@@ -991,6 +991,18 @@ BOOL FASTCALL Disk::IsSASI() const
 
 //---------------------------------------------------------------------------
 //
+//	SCSI Check
+//
+//---------------------------------------------------------------------------
+BOOL FASTCALL Disk::IsSCSI() const
+{
+	ASSERT(this);
+	// If this isn't SASI, then it must be SCSI.
+	return (this->IsSASI()) ? FALSE : TRUE;
+}
+
+//---------------------------------------------------------------------------
+//
 //	Open
 //  * Call as a post-process after successful opening in a derived class
 //

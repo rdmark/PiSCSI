@@ -25,237 +25,120 @@ Rascsi_Manager* Rascsi_Manager::GetInstance(){
 	return m_instance;
 }
 
+BOOL Rascsi_Manager::AttachDevice(FILE *fp, Disk *disk, int id, int unit_num){
+	BOOL result;
+	m_locked.lock();
+	result = AttachDevicePrivate(fp, disk, id, unit_num);
+	m_locked.unlock();
+	return result;
+}
 
-void Rascsi_Manager::AttachDevice(FILE *fp, Disk *disk, int id, int unit_num){
+BOOL Rascsi_Manager::DetachDevice(FILE *fp, int id, int unit_num){
+	BOOL result;
+	m_locked.lock();
+	result = DetachDevicePrivate(fp, id, unit_num);
+	m_locked.unlock();
+	return result;
+}
+
+BOOL Rascsi_Manager::AttachDevicePrivate(FILE *fp, Disk *disk, int id, int unit_num)
+{
+	Rascsi_Device_Mode_e cur_mode = GetCurrentDeviceMode();
 	int unitno = (id * UnitNum) + unit_num;
 
-	// Get the lock
-	m_locked.lock();
+	if((disk->IsSASI() && (cur_mode == rascsi_device_scsi_mode)) ||
+		(!disk->IsSCSI() && (cur_mode == rascsi_device_sasi_mode))){
+			FPRT(fp, "Warning: Can't mix SASI and SCSI devices!\n");
+			return FALSE;
+	}
 
 	// Check if something already exists at that SCSI ID / Unit Number
 	if (m_disk[unitno]) {
-		// Disconnect it from the controller
-		if (m_ctrl[i]) {
-			m_ctrl[i]->SetUnit(j, NULL);
-		}else{
-			printf("Warning: A controller was not connected to the drive at id %d un %d\n",id, unit_num);
-		}
-
-		// Free the Unit
-		delete m_disk[unitno];
+		DetachDevice(fp,id,unit_num);
 	}
 
 	// Add the new unit
 	m_disk[unitno] = disk;
-
-	// Reconfigure all of the controllers
-	for (i = 0; i < CtrlMax; i++) {
-		// Examine the unit configuration
-		sasi_num = 0;
-		scsi_num = 0;
-		for (j = 0; j < UnitNum; j++) {
-			unitno = i * UnitNum + j;
-			// branch by unit type
-			if (m_disk[unitno]) {
-				if (m_disk[unitno]->IsSASI()) {
-					// Drive is SASI, so increment SASI count
-					sasi_num++;
-				} else {
-					// Drive is SCSI, so increment SCSI count
-					scsi_num++;
-				}
-			}
-
-			// Remove the unit
-			if (m_ctrl[i]) {
-				m_ctrl[i]->SetUnit(j, NULL);
-			}
+	
+	// If the controllder doesn't already exist, create it.
+	if (m_ctrl[id] == nullptr){
+		// We need to create a new controller
+		if(disk->IsSASI()){
+			m_ctrl[id] = new SASIDEV();
+		}else{
+			m_ctrl[id] = new SCSIDEV();
 		}
-
-		// If there are no units connected
-		if (sasi_num == 0 && scsi_num == 0) {
-			if (m_ctrl[i]) {
-				delete m_ctrl[i];
-				m_ctrl[i] = NULL;
-				continue;
-			}
-		}
-
-		// Mixture of SCSI and SASI
-		if (sasi_num > 0 && scsi_num > 0) {
-			FPRT(fp, "Error : SASI and SCSI can't be mixed\n");
-			continue;
-		}
-
-		if (sasi_num > 0) {
-			// Only SASI Unit(s)
-
-			// Release the controller if it is not SASI
-			if (m_ctrl[i] && !m_ctrl[i]->IsSASI()) {
-				delete m_ctrl[i];
-				m_ctrl[i] = NULL;
-			}
-
-			// Create a new SASI controller
-			if (!m_ctrl[i]) {
-				m_ctrl[i] = new SASIDEV();
-				m_ctrl[i]->Connect(i, m_bus);
-			}
-		} else {
-			// Only SCSI Unit(s)
-
-			// Release the controller if it is not SCSI
-			if (m_ctrl[i] && !m_ctrl[i]->IsSCSI()) {
-				delete m_ctrl[i];
-				m_ctrl[i] = NULL;
-			}
-
-			// Create a new SCSI controller
-			if (!m_ctrl[i]) {
-				m_ctrl[i] = new SCSIDEV();
-				m_ctrl[i]->Connect(i, m_bus);
-			}
-		}
-
-		// connect all units
-		for (j = 0; j < UnitNum; j++) {
-			unitno = i * UnitNum + j;
-			if (m_disk[unitno]) {
-				// Add the unit connection
-				m_ctrl[i]->SetUnit(j, m_disk[unitno]);
-			}
-		}
+		m_ctrl[id]->Connect(id, m_bus);
 	}
 
-
-
-		}
-        void Rascsi_Manager::DetachDevice(FILE *fp, Disk *map, int id, int ui)
-		{
-			return;
-		}
-        Disk* Rascsi_Manager::GetDevice(FILE *fp, int id, int ui)
-		{
-			return nullptr;
-
-		}
-
-
-
-//---------------------------------------------------------------------------
-//
-//	Controller Mapping
-//
-//---------------------------------------------------------------------------
-void Rascsi_Manager::MapControler(FILE *fp, Disk **map)
-{
-	int i;
-	int j;
-	int unitno;
-	int sasi_num;
-	int scsi_num;
-
-	// Replace the changed unit
-	for (i = 0; i < CtrlMax; i++) {
-		for (j = 0; j < UnitNum; j++) {
-			unitno = i * UnitNum + j;
-			if (m_disk[unitno] != map[unitno]) {
-				// Check if the original unit exists
-				if (m_disk[unitno]) {
-					// Disconnect it from the controller
-					if (m_ctrl[i]) {
-						m_ctrl[i]->SetUnit(j, NULL);
-					}
-
-					// Free the Unit
-					delete m_disk[unitno];
-				}
-
-				// Setup a new unit
-				m_disk[unitno] = map[unitno];
-			}
-		}
-	}
-
-	// Reconfigure all of the controllers
-	for (i = 0; i < CtrlMax; i++) {
-		// Examine the unit configuration
-		sasi_num = 0;
-		scsi_num = 0;
-		for (j = 0; j < UnitNum; j++) {
-			unitno = i * UnitNum + j;
-			// branch by unit type
-			if (m_disk[unitno]) {
-				if (m_disk[unitno]->IsSASI()) {
-					// Drive is SASI, so increment SASI count
-					sasi_num++;
-				} else {
-					// Drive is SCSI, so increment SCSI count
-					scsi_num++;
-				}
-			}
-
-			// Remove the unit
-			if (m_ctrl[i]) {
-				m_ctrl[i]->SetUnit(j, NULL);
-			}
-		}
-
-		// If there are no units connected
-		if (sasi_num == 0 && scsi_num == 0) {
-			if (m_ctrl[i]) {
-				delete m_ctrl[i];
-				m_ctrl[i] = NULL;
-				continue;
-			}
-		}
-
-		// Mixture of SCSI and SASI
-		if (sasi_num > 0 && scsi_num > 0) {
-			FPRT(fp, "Error : SASI and SCSI can't be mixed\n");
-			continue;
-		}
-
-		if (sasi_num > 0) {
-			// Only SASI Unit(s)
-
-			// Release the controller if it is not SASI
-			if (m_ctrl[i] && !m_ctrl[i]->IsSASI()) {
-				delete m_ctrl[i];
-				m_ctrl[i] = NULL;
-			}
-
-			// Create a new SASI controller
-			if (!m_ctrl[i]) {
-				m_ctrl[i] = new SASIDEV();
-				m_ctrl[i]->Connect(i, m_bus);
-			}
-		} else {
-			// Only SCSI Unit(s)
-
-			// Release the controller if it is not SCSI
-			if (m_ctrl[i] && !m_ctrl[i]->IsSCSI()) {
-				delete m_ctrl[i];
-				m_ctrl[i] = NULL;
-			}
-
-			// Create a new SCSI controller
-			if (!m_ctrl[i]) {
-				m_ctrl[i] = new SCSIDEV();
-				m_ctrl[i]->Connect(i, m_bus);
-			}
-		}
-
-		// connect all units
-		for (j = 0; j < UnitNum; j++) {
-			unitno = i * UnitNum + j;
-			if (m_disk[unitno]) {
-				// Add the unit connection
-				m_ctrl[i]->SetUnit(j, m_disk[unitno]);
-			}
-		}
-	}
+	// Add the disk to the controller
+	m_ctrl[id]->SetUnit(unit_num, disk);
 }
+
+BOOL Rascsi_Manager::DetachDevicePrivate(FILE *fp, int id, int unit_num)
+{
+	int unitno = (id * UnitNum) + unit_num;
+
+	// Disconnect it from the controller
+	if (m_ctrl[id]) {
+		m_ctrl[id]->SetUnit(unit_num, NULL);
+		// Free the Unit
+		delete m_disk[unitno];
+		m_disk[unitno] = nullptr;
+	}else{
+		fprintf(fp, "Warning: A controller was not connected to the drive at id %d un %d\n",id, unit_num);
+		fprintf(fp, "This is some sort of internal error, since you can't have a device without a controller.\n");
+		return FALSE;
+	}
+
+	// If there are no longer any units connected to this controller, delete it
+	if(!m_ctrl[id]->HasUnit()){
+		delete m_ctrl[id];
+		m_ctrl[id] = nullptr;
+	}
+
+	return TRUE;
+}
+
+Disk* Rascsi_Manager::GetDevice(FILE *fp, int id, int unit_num)
+{
+	int unitno = (id * UnitNum) + unit_num;
+	return m_disk[unitno];
+}
+
+//---------------------------------------------------------------------------
+//
+//	GetCurrentDeviceMode
+//
+//  Loop through all of the controllers and check if we have SCSI or SASI
+//  controllers already created. (Note: We can't have a mix of them)
+//
+//---------------------------------------------------------------------------
+Rascsi_Device_Mode_e Rascsi_Manager::GetCurrentDeviceMode(){
+
+	Rascsi_Device_Mode_e mode = rascsi_device_unknown_mode;
+	for(int i =0; i < CtrlMax; i++){
+		if(m_ctrl[i] != nullptr){	
+			if(m_ctrl[i]->IsSASI()){
+				if(mode == rascsi_device_unknown_mode){
+					mode = rascsi_device_sasi_mode;
+				}else if(mode == rascsi_device_scsi_mode){
+					mode = rascsi_device_invalid_mode;
+					printf("Error: Mix of SCSI and SASI devices. This isn't allowed. Device %d was SASI, but expecting SCSI\n", i);
+				}
+			}else { // This is SCSI
+				if(mode == rascsi_device_unknown_mode){
+					mode = rascsi_device_scsi_mode;
+				}else if(mode == rascsi_device_sasi_mode){
+					mode = rascsi_device_invalid_mode;
+					printf("Error: Mix of SCSI and SASI devices. This isn't allowed. Device %d was SCSI, but expecting SASI\n", i);
+				}
+			}
+		}
+	}
+	return mode;
+}
+
 
 
 //---------------------------------------------------------------------------

@@ -27,18 +27,28 @@
 #include "sasidev_ctrl.h"
 #include <mutex>
 
+enum Rascsi_Device_Mode_e{
+    rascsi_device_unknown_mode,
+    rascsi_device_sasi_mode,
+    rascsi_device_scsi_mode,
+    rascsi_device_invalid_mode,
+};
+
 class Rascsi_Manager{
     public:
         static Rascsi_Manager* GetInstance();
         void MapControler(FILE *fp, Disk **map);
-        void AttachDevice(FILE *fp, Disk *disk, int id, int ui);
-        void DetachDevice(FILE *fp, Disk *disk, int id, int ui);
+
+
+        BOOL AttachDevice(FILE *fp, Disk *disk, int id, int ui);
+        BOOL DetachDevice(FILE *fp, int id, int ui);
         Disk* GetDevice(FILE *fp, int id, int ui);
         void ListDevice(FILE *fp);
         BOOL Init();
         void Close();
         void Reset();
         BOOL Step();
+        Rascsi_Device_Mode_e GetCurrentDeviceMode();
 
         static const int CtrlMax = 8;				// Maximum number of SCSI controllers
         static const int UnitNum=2;					// Number of units around controller
@@ -61,6 +71,9 @@ class Rascsi_Manager{
         static Rascsi_Manager *m_instance;
         static BOOL m_active;
         static BOOL m_running;
+
+        BOOL AttachDevicePrivate(FILE *fp, Disk *disk, int id, int ui);
+        BOOL DetachDevicePrivate(FILE *fp, int id, int ui);
 
         // Any PUBLIC functions should lock this before accessing the m_ctrl
         // m_disk or m_bus data structures. The Public functions could be

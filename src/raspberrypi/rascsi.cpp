@@ -48,6 +48,10 @@ FATFS fatfs;						// FatFS
 #endif	// BAREMETAL
 Rascsi_Manager *mgr;
 
+#ifndef CONNECT_DESC
+#define CONNECT_DESC "UNKNOWN"
+#endif
+
 #ifndef BAREMETAL
 //---------------------------------------------------------------------------
 //
