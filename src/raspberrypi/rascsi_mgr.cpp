@@ -291,7 +291,6 @@ BOOL Rascsi_Manager::Init(){
 BOOL Rascsi_Manager::Step()
 {
 
-	m_locked.lock();
 		// Work initialization
 		m_actid = -1;
 		m_phase = BUS::busfree;
@@ -304,7 +303,6 @@ BOOL Rascsi_Manager::Step()
 				m_locked.unlock();
 				return FALSE;
 			}
-			m_locked.unlock();
 			return FALSE;
 		}
 
@@ -316,7 +314,6 @@ BOOL Rascsi_Manager::Step()
 #if !defined(BAREMETAL)
 			usleep(0);
 #endif	// !BAREMETAL
-			m_locked.unlock();
 			return FALSE;
 		}
 #endif	// USE_SEL_EVENT_ENABLE
@@ -335,10 +332,10 @@ BOOL Rascsi_Manager::Step()
 
 		// Stop because it the bus is busy or another device responded
 		if (m_bus->GetBSY() || !m_bus->GetSEL()) {
-			m_locked.unlock();
 			return FALSE;
 		}
 
+	m_locked.lock();
 		// Notify all controllers
 		m_data = m_bus->GetDAT();
 		for (int i = 0; i < CtrlMax; i++) {
