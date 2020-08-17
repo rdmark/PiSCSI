@@ -126,11 +126,15 @@ void Banner(int argc, char* argv[])
 //---------------------------------------------------------------------------
 BOOL Init()
 {
+	printf("Rascsi_Manager Init\n");
 	if(!Rascsi_Manager::Init()){
+	printf("\tRascsi_Manager FAILED!!\n");
 		return FALSE;
 	}
 
+	printf("Command_Thread Init\n");
 	if(!Command_Thread::Init()){
+	printf("\tCommand_Thread FAILED!!\n");
 		return FALSE;
 	}
 
@@ -176,6 +180,7 @@ int startrascsi(void)
 #else
 int main(int argc, char* argv[])
 {
+	int i=0;
 #endif	// BAREMETAL
 	int ret;
 #ifndef BAREMETAL
@@ -195,7 +200,7 @@ int main(int argc, char* argv[])
 
 #ifdef BAREMETAL
 	// BUSY assert (to hold the host side)
-	Rascsi_Manager::GetInstance()->m_bus->SetBSY(TRUE);
+	Rascsi_Manager::m_bus->SetBSY(TRUE);
 
 	// Argument parsing
 	if (!Command_Thread::ParseConfig(argc, argv)) {
@@ -203,12 +208,12 @@ int main(int argc, char* argv[])
 		goto err_exit;
 	}
 	// Release the busy signal
-	Rascsi_Manager::GetInstance()->m_bus->SetBSY(FALSE);
+	Rascsi_Manager::m_bus->SetBSY(FALSE);
 
 #endif
 
 	// For non-baremetal versions, we won't process the startup arguments... yet
-
+	printf("Here1\n");
 
 #ifndef BAREMETAL
     // Set the affinity to a specific processor core
@@ -221,10 +226,14 @@ int main(int argc, char* argv[])
 #endif	// USE_SEL_EVENT_ENABLE
 #endif	// BAREMETAL
 
+	printf("entering main loop \n");
 	// Main Loop
 	while (Rascsi_Manager::IsRunning()) {
+		printf("step %d\n", i++);
 		Rascsi_Manager::Step();
 	}
+	printf("Exited main loop\n");
+
 #ifdef BAREMETAL
 err_exit:
 #endif
