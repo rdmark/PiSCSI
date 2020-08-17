@@ -151,16 +151,18 @@ BOOL Rasctl_Command::IsValid(FILE *fp){
         }
     }
 
+    //!!!!! THIS DOESN'T WORK QUITE RIGHT.....
     // Check if the filename extension matches the device type
-    expected_type = DeviceTypeFromFilename(fp, file);
-    if(expected_type != rasctl_dev_invalid){
-        if((file != nullptr) && (type != expected_type)) {
-            FPRT(fp, "Filename specified is for type %s. This isn't compatible with a %s device.",
-                dev_type_lookup[expected_type], dev_type_lookup[type]);
-            return FALSE;
-        }
-    }
-
+//    if(strlen(file) > 0){
+//    	expected_type = DeviceTypeFromFilename(fp, file);
+//    	if(expected_type != rasctl_dev_invalid){
+//    	    if((file != nullptr) && (type != expected_type)) {
+//        	    FPRT(fp, "Filename specified is for type %s. This isn't compatible with a %s device.",
+//        	        dev_type_lookup[expected_type], dev_type_lookup[type]);
+//        	    return FALSE;
+//        	}
+//	    }
+//    }
     // Everything appears to be OK
     return TRUE;	
 }
