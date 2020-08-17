@@ -146,7 +146,7 @@ BOOL Rasctl_Command::IsValid(FILE *fp){
         }
         // Check that the file is 1 byte or larger
         if(stat_buffer.st_size < 1){
-            FPRT(fp, "File must not be empty. %s is %ld bytes in size",file,stat_buffer.st_size);
+            FPRT(fp, "File must not be empty. %s is %lld bytes in size",file,stat_buffer.st_size);
             return FALSE;
         }
     }
