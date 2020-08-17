@@ -1,3 +1,15 @@
+//---------------------------------------------------------------------------
+//
+//	SCSI Target Emulator RaSCSI (*^..^*)
+//	for Raspberry Pi
+//
+//	Powered by XM6 TypeG Technology.
+//	Copyright (C) 2016-2020 GIMONS
+//  Copyright (C) 2020 akuker
+//
+//	[ OS specific features / glue logic ]
+//
+//---------------------------------------------------------------------------
 #include "os.h"
 
 //---------------------------------------------------------------------------
@@ -23,6 +35,10 @@ void FixCpu(int cpu)
 		sched_setaffinity(0, sizeof(cpu_set_t), &cpuset);
 	}
 #else
+	// RaSCSI itself only functions on a Raspberry Pi. However, the
+	// unit tests should run on other hosts. For example, the github
+	// action runners are only Ubuntu x86_64. Some developers may also
+	// want to be able to run the unit tests on MacOS.
     return;
 #endif
 }
