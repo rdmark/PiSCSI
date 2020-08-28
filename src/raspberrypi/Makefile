@@ -1,7 +1,10 @@
 .DEFAULT_GOAL: all
 
-CC       = gcc
-CXX      = g++
+ARCH ?= arm
+CROSS_COMPILE ?= arm-linux-gnueabihf-
+
+CC  = $(CROSS_COMPILE)gcc
+CXX = $(CROSS_COMPILE)g++
 
 DEBUG ?= 0
 ifeq ($(DEBUG), 1)
@@ -15,8 +18,8 @@ else
 	CXXFLAGS += -O3 -Wall -Werror
 	BUILD_TYPE = Release
 endif
-CFLAGS += -Idevices -Icontrollers -I.
-CXXFLAGS += -Idevices -Icontrollers -I. -std=c++14
+CFLAGS += -iquote .
+CXXFLAGS += -std=c++14 -iquote .
 
 # If its not specified, build for STANDARD configuration
 CONNECT_TYPE ?= STANDARD
