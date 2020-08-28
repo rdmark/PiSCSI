@@ -21,7 +21,6 @@
 
 #include "os.h"
 #include "rasctl_command.h"
-#include "rascsi_mgr.h"
 #include "sasihd.h"
 #include "scsihd.h"
 #include "scsihd_nec.h"
