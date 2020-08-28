@@ -1,5 +1,4 @@
 #include "rasctl_command.h"
-#include "rascsi_mgr.h"
 #include <string.h>
 
 // In the serialized string from rasctl
@@ -100,7 +99,6 @@ BOOL Rasctl_Command::rasctl_dev_is_hd(rasctl_dev_type type)
 
 BOOL Rasctl_Command::IsValid(FILE *fp){
     struct stat stat_buffer;
-    rasctl_dev_type expected_type = rasctl_dev_invalid;
 
     // If the command is "invalid" we can just return FALSE
     if(cmd == rasctl_cmd_invalid){
@@ -113,14 +111,14 @@ BOOL Rasctl_Command::IsValid(FILE *fp){
     }
 
     // Check that the ID is in range
-    if((id < 0) || (id >= Rascsi_Manager::CtrlMax)){
-        FPRT(fp, "Invalid ID. Must be between 0 and %d",Rascsi_Manager::CtrlMax-1);
+    if((id < 0) || (id >= CtrlMax)){
+        FPRT(fp, "Invalid ID. Must be between 0 and %d",CtrlMax-1);
         return FALSE;
     }
 
     // Check that unit number is in range
-    if((un < 0) || (un >= Rascsi_Manager::UnitNum)){
-        FPRT(fp, "Invalid unit number. Must be between 0 and %d",Rascsi_Manager::UnitNum-1);
+    if((un < 0) || (un >= UnitNum)){
+        FPRT(fp, "Invalid unit number. Must be between 0 and %d",UnitNum-1);
         return FALSE;
     }
 

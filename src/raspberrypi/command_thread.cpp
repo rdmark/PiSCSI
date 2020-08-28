@@ -21,16 +21,26 @@
 
 #include "os.h"
 #include "rasctl_command.h"
-#include "sasihd.h"
-#include "scsihd.h"
-#include "scsihd_nec.h"
-#include "scsihd_apple.h"
-#include "scsicd.h"
-#include "scsimo.h"
-#include "scsi_host_bridge.h"
+#include "devices/sasihd.h"
+#include "devices/scsihd.h"
+#include "devices/scsihd_nec.h"
+#include "devices/scsihd_apple.h"
+#include "devices/scsicd.h"
+#include "devices/scsimo.h"
+#include "devices/scsi_host_bridge.h"
 
 int Command_Thread::m_monsocket = -1;				// Monitor Socket
 pthread_t Command_Thread::m_monthread;				// Monitor Thread
+
+// These objects are currently in rascsi.cpp. They should eventually be 
+// broken out.
+extern volatile BOOL running;		// Running flag
+extern volatile BOOL active;		// Processing flag
+void ListDevice(FILE *fp);
+Disk* GetDevice(FILE *fp, int id, int un);
+BOOL AttachDevice(FILE *fp, Disk *pUnit, int id, int un);
+BOOL DetachDevice(FILE *fp, int id, int un);
+
 
 //---------------------------------------------------------------------------
 //
@@ -304,7 +314,7 @@ void *Command_Thread::MonThread(void *param)
 	// Setup the monitor socket to receive commands
 	listen(m_monsocket, 1);
 
-	while (Rascsi_Manager::IsRunning()) {
+	while (running) {
 		// Wait for connection
 		memset(&client, 0, sizeof(client));
 		len = sizeof(client);
@@ -319,14 +329,14 @@ void *Command_Thread::MonThread(void *param)
 
 		// If we received a command....
 		if (p) {
-
+			// Decode the received buffer into a Command object
 			new_command = Rasctl_Command::DeSerialize(p,BUFSIZ);
 
+			// If the command was successfully parsed
 			if(new_command != nullptr){
 				// Execute the command
 				ExecuteCommand(fp, new_command);
 			}
-
 	}
 
 		// Release the connection
@@ -380,12 +390,12 @@ BOOL Command_Thread::ExecuteCommand(FILE *fp, Rasctl_Command *incoming_command)
 
 BOOL Command_Thread::DoShutdown(FILE *fp, Rasctl_Command *incoming_command){
 	fprintf(fp, "Stopping the RaSCSI application\n");
-	Rascsi_Manager::Stop();
+	running = FALSE;
 	return TRUE;
 }
 
 BOOL Command_Thread::DoList(FILE *fp, Rasctl_Command *incoming_command){
-	Rascsi_Manager::ListDevice(fp);
+	ListDevice(fp);
 	return TRUE;
 }
 
@@ -453,17 +463,17 @@ BOOL Command_Thread::DoAttach(FILE *fp, Rasctl_Command *incoming_command){
 	pUnit->SetCacheWB(FALSE);
 
 	// Map the controller
-	return Rascsi_Manager::AttachDevice(fp, pUnit, incoming_command->id, incoming_command->un);	
+	return AttachDevice(fp, pUnit, incoming_command->id, incoming_command->un);	
 }
 
 BOOL Command_Thread::DoDetach(FILE *fp, Rasctl_Command *incoming_command){
-	return Rascsi_Manager::DetachDevice(fp, incoming_command->id, incoming_command->un);
+	return DetachDevice(fp, incoming_command->id, incoming_command->un);
 }
 
 BOOL Command_Thread::DoInsert(FILE *fp, Rasctl_Command *incoming_command){
 
 	Filepath filepath;
-	Disk *pUnit = Rascsi_Manager::GetDevice(fp, incoming_command->id, incoming_command->un);
+	Disk *pUnit = GetDevice(fp, incoming_command->id, incoming_command->un);
 
 
 	// Does the device exist?
@@ -491,7 +501,7 @@ BOOL Command_Thread::DoInsert(FILE *fp, Rasctl_Command *incoming_command){
 	return TRUE;
 }
 BOOL Command_Thread::DoEject(FILE *fp, Rasctl_Command *incoming_command){
-	Disk *pUnit = Rascsi_Manager::GetDevice(fp, incoming_command->id, incoming_command->un);
+	Disk *pUnit = GetDevice(fp, incoming_command->id, incoming_command->un);
 
 	// Does the device exist?
 	if (pUnit == nullptr) {
@@ -511,7 +521,7 @@ BOOL Command_Thread::DoEject(FILE *fp, Rasctl_Command *incoming_command){
 
 BOOL Command_Thread::DoProtect(FILE *fp, Rasctl_Command *incoming_command){
 
-	Disk *pUnit = Rascsi_Manager::GetDevice(fp, incoming_command->id, incoming_command->un);
+	Disk *pUnit = GetDevice(fp, incoming_command->id, incoming_command->un);
 
 	// Does the device exist?
 	if (pUnit == nullptr) {

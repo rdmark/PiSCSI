@@ -14,6 +14,12 @@
 
 #include "os.h"
 
+// Todo - this is a clone of the declaration in rascsi.cpp. This is sloppy!!! Fix this!!
+#ifndef CtrlMax
+#define CtrlMax	8					// Maximum number of SCSI controllers
+#define UnitNum	2					// Number of units around controller
+#endif 
+
 enum rasctl_command : int {
     rasctl_cmd_invalid  = -1,
     rasctl_cmd_attach   =  0,

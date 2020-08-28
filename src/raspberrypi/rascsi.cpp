@@ -33,19 +33,17 @@
 //---------------------------------------------------------------------------
 #define CtrlMax	8					// Maximum number of SCSI controllers
 #define UnitNum	2					// Number of units around controller
-#ifdef BAREMETAL
-#define FPRT(fp, ...) printf( __VA_ARGS__ )
-#else
-#define FPRT(fp, ...) fprintf(fp, __VA_ARGS__ )
-#endif	// BAREMETAL
 
+#ifndef CONNECT_DESC
+#define CONNECT_DESC "Unknown"
+#endif
 //---------------------------------------------------------------------------
 //
 //	Variable declarations
 //
 //---------------------------------------------------------------------------
-static volatile BOOL running;		// Running flag
-static volatile BOOL active;		// Processing flag
+volatile BOOL running;		// Running flag
+volatile BOOL active;		// Processing flag
 SASIDEV *ctrl[CtrlMax];				// Controller
 Disk *disk[CtrlMax * UnitNum];		// Disk
 GPIOBUS *bus;						// GPIO Bus
@@ -297,6 +295,9 @@ void ListDevice(FILE *fp)
 	FPRT(fp, "+----+----+------+-------------------------------------\n");
 }
 
+
+
+
 //---------------------------------------------------------------------------
 //
 //	Controller Mapping
@@ -411,6 +412,80 @@ void MapControler(FILE *fp, Disk **map)
 		}
 	}
 }
+
+Disk* GetDevice(FILE *fp, int id, int un){
+
+	// Check the Controller Number
+	if (id < 0 || id >= CtrlMax) {
+		FPRT(fp, "Error : Invalid ID\n");
+		return FALSE;
+	}
+
+	// Check the Unit Number
+	if (un < 0 || un >= UnitNum) {
+		FPRT(fp, "Error : Invalid unit number\n");
+		return FALSE;
+	}
+
+	// Replace with the newly created unit
+	return disk[id * UnitNum + un];
+}
+
+BOOL AttachDevice(FILE *fp, Disk *pUnit, int id, int un){
+	Disk *map[CtrlMax * UnitNum];
+	Filepath filepath;
+
+	// Copy the Unit List
+	memcpy(map, disk, sizeof(disk));
+
+	// Check the Controller Number
+	if (id < 0 || id >= CtrlMax) {
+		FPRT(fp, "Error : Invalid ID\n");
+		return FALSE;
+	}
+
+	// Check the Unit Number
+	if (un < 0 || un >= UnitNum) {
+		FPRT(fp, "Error : Invalid unit number\n");
+		return FALSE;
+	}
+
+	// Replace with the newly created unit
+	map[id * UnitNum + un] = pUnit;
+
+	// Re-map the controller
+	MapControler(fp, map);
+	return TRUE;
+}
+
+BOOL DetachDevice(FILE *fp, int id, int un){
+	Disk *map[CtrlMax * UnitNum];
+	Filepath filepath;
+
+	// Copy the Unit List
+	memcpy(map, disk, sizeof(disk));
+
+	// Check the Controller Number
+	if (id < 0 || id >= CtrlMax) {
+		FPRT(fp, "Error : Invalid ID\n");
+		return FALSE;
+	}
+
+	// Check the Unit Number
+	if (un < 0 || un >= UnitNum) {
+		FPRT(fp, "Error : Invalid unit number\n");
+		return FALSE;
+	}
+
+	// Free the existing unit
+	map[id * UnitNum + un] = NULL;
+
+	// Re-map the controller
+	MapControler(fp, map);
+	return TRUE;
+}
+
+
 
 //---------------------------------------------------------------------------
 //

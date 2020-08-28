@@ -117,6 +117,12 @@
 
 #define ARRAY_SIZE(x) (sizeof(x)/(sizeof(x[0])))
 
+#ifdef BAREMETAL
+#define FPRT(fp, ...) printf( __VA_ARGS__ )
+#else
+#define FPRT(fp, ...) fprintf(fp, __VA_ARGS__ )
+#endif	// BAREMETAL
+
 //---------------------------------------------------------------------------
 //
 //	Basic Type Definitions
