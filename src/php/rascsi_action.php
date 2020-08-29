@@ -239,9 +239,11 @@ function check_are_you_sure($prompt){
 function action_connect_new_device(){
 	// If we already know the type & filename, we can go connect the device...
 	if(isset($_POST['type']) && isset($_POST['file_name'])){
-		$command = 'rasctl -i '.$_POST['id'].' -c attach -t '.type_string_to_rasctl_type($_POST['type']);
+		$command = 'rasctl -i '.$_POST['id'].' -c attach ';
 		if($_POST['file_name'] != "None"){
 			$command = $command.' -f '.$GLOBALS['FILE_PATH'].'/'.$_POST['file_name'];
+		}else{
+			$command = $command.' -t '.type_string_to_rasctl_type($_POST['type']);
 		}
 		exec($command, $retArray, $result);
 		check_result($result, $command, $retArray);
