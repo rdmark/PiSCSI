@@ -8,12 +8,11 @@
 //
 //	Imported NetBSD support and some optimisation patch by Rin Okuyama.
 //
-//	[ OS固有 ]
+//	[ OS specific features / glue logic ]
 //
 //---------------------------------------------------------------------------
 
-#if !defined(os_h)
-#define os_h
+#pragma once
 
 //---------------------------------------------------------------------------
 //
@@ -61,9 +60,12 @@
 #include <sys/mman.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#ifndef __APPLE__
 #include <sys/epoll.h>
 #include <netinet/in.h>
 #include <linux/gpio.h>
+#endif
+#include <netinet/in.h>
 #else
 #include <machine/endian.h>
 #define	htonl(_x)	__htonl(_x)
@@ -86,7 +88,7 @@
 
 //---------------------------------------------------------------------------
 //
-//	基本マクロ
+//	Base Macros
 //
 //---------------------------------------------------------------------------
 #undef FASTCALL
@@ -116,9 +118,15 @@
 
 #define ARRAY_SIZE(x) (sizeof(x)/(sizeof(x[0])))
 
+#ifdef BAREMETAL
+#define FPRT(fp, ...) printf( __VA_ARGS__ )
+#else
+#define FPRT(fp, ...) fprintf(fp, __VA_ARGS__ )
+#endif	// BAREMETAL
+
 //---------------------------------------------------------------------------
 //
-//	基本型定義
+//	Basic Type Definitions
 //
 //---------------------------------------------------------------------------
 typedef unsigned char BYTE;
@@ -153,4 +161,10 @@ typedef const char *LPCSTR;
 #define xstrcasecmp strcasecmp
 #define xstrncasecmp strncasecmp
 
-#endif	// os_h
+//---------------------------------------------------------------------------
+//
+//	Pin the thread to a specific CPU
+//
+//---------------------------------------------------------------------------
+void FixCpu(int cpu);
+

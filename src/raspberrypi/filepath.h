@@ -7,9 +7,7 @@
 //	[ ファイルパス(サブセット) ]
 //
 //---------------------------------------------------------------------------
-
-#if !defined(filepath_h)
-#define filepath_h
+#pragma once
 
 class Fileio;
 
@@ -80,4 +78,3 @@ private:
 										// ショート名(TCHAR)
 };
 
-#endif	// filepath_h
