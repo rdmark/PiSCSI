@@ -37,7 +37,7 @@
 //
 //---------------------------------------------------------------------------
 #define CtrlMax	8					// Maximum number of SCSI controllers
-#define UnitNum	2					// Number of units around controller
+#define UnitNum	1					// Number of units around controller
 #ifdef BAREMETAL
 #define FPRT(fp, ...) printf( __VA_ARGS__ )
 #else
