@@ -26,6 +26,9 @@
 #include "ctapdriver.h"
 #include "log.h"
 #include "exceptions.h"
+#include <string>
+
+using namespace std;
 
 //---------------------------------------------------------------------------
 //
@@ -85,6 +88,24 @@ static BOOL ip_link(int fd, const char* ifname, BOOL up) {
 	return TRUE;
 }
 
+static bool is_interface_up(const char *interface) {
+	string file = "/sys/class/net/";
+	file += interface;
+	file += "/carrier";
+
+	bool status = true;
+	FILE *fp = fopen(file.c_str(), "r");
+	if (!fp || fgetc(fp) != '1') {
+		status = false;
+	}
+
+	if (fp) {
+		fclose(fp);
+	}
+
+	return status;
+}
+
 BOOL CTapDriver::Init()
 {
 	LOGTRACE("%s",__PRETTY_FUNCTION__);
@@ -129,18 +150,21 @@ BOOL CTapDriver::Init()
 		return FALSE;
 	}
 
-	LOGTRACE("Going to see if rascsi_bridge is available");
+	LOGINFO("Checking if rascsi_bridge is available");
 
 	// Check if the bridge is already created
 	if (access("/sys/class/net/rascsi_bridge", F_OK) != 0) {
-		const char *interface = "eth0";
-
-		FILE *eth0 = fopen("/sys/class/net/eth0/carrier", "r");
-		if (!eth0 || fgetc(eth0) != '1') {
+		LOGINFO("Checking whether to use interface eth0 or wlan0");
+		const char *interface = NULL;
+		if (is_interface_up("eth0")) {
+			interface = "eth0";
+		}
+		else if (is_interface_up("wlan0")) {
 			interface = "wlan0";
 		}
-		if (eth0) {
-			fclose(eth0);
+		if (!interface) {
+			LOGERROR("Neither interface eth0 nor wlan0 is up");
+			return FALSE;
 		}
 
 		LOGINFO("Creating the rascsi_bridge for interface %s...", interface);
