@@ -74,8 +74,8 @@ void SASIHD::Open(const Filepath& path)
 	// 20M(22437888 BS=1024 C=21912)
 	if (size == 0x1566000) {
 		// Sector size and number of blocks
-		disk.size = 10;
-		disk.blocks = (DWORD)(size >> 10);
+		SetSectorSize(10);
+		SetBlockCount((DWORD)(size >> 10));
 
 		Disk::Open(path);
 		FileSupport::SetPath(path);
@@ -119,8 +119,8 @@ void SASIHD::Open(const Filepath& path)
 	#endif	// REMOVE_FIXED_SASIHD_SIZE
 
 	// Sector size 256 bytes and number of blocks
-	disk.size = 8;
-	disk.blocks = (DWORD)(size >> 8);
+	SetSectorSize(8);
+	SetBlockCount((DWORD)(size >> 8));
 
 	// Call the base class
 	Disk::Open(path);

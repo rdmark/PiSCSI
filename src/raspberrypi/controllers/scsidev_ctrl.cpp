@@ -416,11 +416,10 @@ void SCSIDEV::CmdInquiry()
 	LOGTRACE("%s INQUIRY Command", __PRETTY_FUNCTION__);
 
 	// Find a valid unit
-	// TODO The code below is most likely wrong. It results in the same INQUIRY data being
+	// TODO The code below is probably wrong. It results in the same INQUIRY data being
 	// used for all LUNs, even though each LUN has its individual set of INQUIRY data.
-	Device *device = NULL;
-	int valid_lun;
-	for (valid_lun = 0; valid_lun < UnitMax; valid_lun++) {
+	PrimaryDevice *device = NULL;
+	for (int valid_lun = 0; valid_lun < UnitMax; valid_lun++) {
 		if (ctrl.unit[valid_lun]) {
 			device = ctrl.unit[valid_lun];
 			break;
@@ -429,8 +428,7 @@ void SCSIDEV::CmdInquiry()
 
 	// Processed on the disk side (it is originally processed by the controller)
 	if (device) {
-		LOGTRACE("%s Buffer size is %d",__PRETTY_FUNCTION__, ctrl.bufsize);
-		ctrl.length = ctrl.unit[valid_lun]->Inquiry(ctrl.cmd, ctrl.buffer);
+		ctrl.length = device->Inquiry(ctrl.cmd, ctrl.buffer);
 	} else {
 		ctrl.length = 0;
 	}
@@ -722,14 +720,14 @@ void SCSIDEV::CmdRead10()
 	DWORD capacity = ctrl.unit[lun]->GetBlockCount();
 	if (record > capacity || record + ctrl.blocks > capacity) {
 		ostringstream s;
-		s << "ID " << ctrl.unit[lun]->GetType() << ": Media capacity of " << capacity << " blocks exceeded: "
+		s << "ID " << GetSCSIID() << ": Media capacity of " << capacity << " blocks exceeded: "
 				<< "Trying to read block " << record << ", block count " << ctrl.blocks;
 		LOGWARN("%s", s.str().c_str());
 		Error(ERROR_CODES::sense_key::ILLEGAL_REQUEST, ERROR_CODES::asc::LBA_OUT_OF_RANGE);
 		return;
 	}
 
-	LOGTRACE("%s READ(10) command record=%d block=%d", __PRETTY_FUNCTION__, (unsigned int)record, (int)ctrl.blocks);
+	LOGTRACE("%s READ(10) command record=%d blocks=%d", __PRETTY_FUNCTION__, (unsigned int)record, (int)ctrl.blocks);
 
 	// Do not process 0 blocks
 	if (ctrl.blocks == 0) {
@@ -794,14 +792,14 @@ void SCSIDEV::CmdRead16()
 	DWORD capacity = ctrl.unit[lun]->GetBlockCount();
 	if (record > capacity || record + ctrl.blocks > capacity) {
 		ostringstream s;
-		s << "Media capacity of " << capacity << " blocks exceeded: "
+		s << "ID " << GetSCSIID() << ": Media capacity of " << capacity << " blocks exceeded: "
 				<< "Trying to read block " << record << ", block count " << ctrl.blocks;
 		LOGWARN("%s", s.str().c_str());
 		Error(ERROR_CODES::sense_key::ILLEGAL_REQUEST, ERROR_CODES::asc::LBA_OUT_OF_RANGE);
 		return;
 	}
 
-	LOGTRACE("%s READ(16) command record=%d block=%d", __PRETTY_FUNCTION__, (unsigned int)record, (int)ctrl.blocks);
+	LOGTRACE("%s READ(16) command record=%d blocks=%d", __PRETTY_FUNCTION__, (unsigned int)record, (int)ctrl.blocks);
 
 	// Do not process 0 blocks
 	if (ctrl.blocks == 0) {
@@ -855,14 +853,14 @@ void SCSIDEV::CmdWrite10()
 	DWORD capacity = ctrl.unit[lun]->GetBlockCount();
 	if (record > capacity || record + ctrl.blocks > capacity) {
 		ostringstream s;
-		s << "Media capacity of " << capacity << " blocks exceeded: "
-				<< "Trying to write block " << record << ", block count " << ctrl.blocks;
+		s << "ID " << GetSCSIID() << ": Media capacity of " << capacity << " blocks exceeded: "
+				<< "Trying to read block " << record << ", block count " << ctrl.blocks;
 		LOGWARN("%s", s.str().c_str());
 		Error(ERROR_CODES::sense_key::ILLEGAL_REQUEST, ERROR_CODES::asc::LBA_OUT_OF_RANGE);
 		return;
 	}
 
-	LOGTRACE("%s WRTIE(10) command record=%d blocks=%d",__PRETTY_FUNCTION__, (unsigned int)record, (unsigned int)ctrl.blocks);
+	LOGTRACE("%s WRITE(10) command record=%d blocks=%d",__PRETTY_FUNCTION__, (unsigned int)record, (unsigned int)ctrl.blocks);
 
 	// Do not process 0 blocks
 	if (ctrl.blocks == 0) {
@@ -927,14 +925,14 @@ void SCSIDEV::CmdWrite16()
 	DWORD capacity = ctrl.unit[lun]->GetBlockCount();
 	if (record > capacity || record + ctrl.blocks > capacity) {
 		ostringstream s;
-		s << "Media capacity of " << capacity << " blocks exceeded: "
-				<< "Trying to write block " << record << ", block count " << ctrl.blocks;
+		s << "ID " << GetSCSIID() << ": Media capacity of " << capacity << " blocks exceeded: "
+				<< "Trying to read block " << record << ", block count " << ctrl.blocks;
 		LOGWARN("%s", s.str().c_str());
 		Error(ERROR_CODES::sense_key::ILLEGAL_REQUEST, ERROR_CODES::asc::LBA_OUT_OF_RANGE);
 		return;
 	}
 
-	LOGTRACE("%s WRTIE(16) command record=%d blocks=%d",__PRETTY_FUNCTION__, (unsigned int)record, (unsigned int)ctrl.blocks);
+	LOGTRACE("%s WRITE(16) command record=%d blocks=%d",__PRETTY_FUNCTION__, (unsigned int)record, (unsigned int)ctrl.blocks);
 
 	// Do not process 0 blocks
 	if (ctrl.blocks == 0) {

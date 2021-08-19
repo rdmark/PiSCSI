@@ -889,7 +889,7 @@ void SASIDEV::CmdRead6()
 		DWORD capacity = ctrl.unit[lun]->GetBlockCount();
 		if (record > capacity || record + ctrl.blocks > capacity) {
 			ostringstream s;
-			s << "ID " << ctrl.unit[lun]->GetType() << ": Media capacity of " << capacity << " blocks exceeded: "
+			s << "ID " << GetSCSIID() << ": Media capacity of " << capacity << " blocks exceeded: "
 					<< "Trying to read block " << record << ", block count " << ctrl.blocks;
 			LOGWARN("%s", s.str().c_str());
 			Error(ERROR_CODES::sense_key::ILLEGAL_REQUEST, ERROR_CODES::asc::LBA_OUT_OF_RANGE);
@@ -897,7 +897,7 @@ void SASIDEV::CmdRead6()
 		}
 	}
 
-	LOGTRACE("%s READ(6) command record=%d blocks=%d ID %s", __PRETTY_FUNCTION__, (unsigned int)record, (int)ctrl.blocks, ctrl.unit[lun]->GetType().c_str());
+	LOGTRACE("%s READ(6) command record=%d blocks=%d", __PRETTY_FUNCTION__, (unsigned int)record, (int)ctrl.blocks);
 
 	// Command processing on drive
 	ctrl.length = ctrl.unit[lun]->Read(ctrl.cmd, ctrl.buffer, record);
@@ -1000,7 +1000,7 @@ void SASIDEV::CmdWrite6()
 	DWORD capacity = ctrl.unit[lun]->GetBlockCount();
 	if (record > capacity || record + ctrl.blocks > capacity) {
 		ostringstream s;
-		s << "Media capacity of " << capacity << " blocks exceeded: "
+		s << "ID " << GetSCSIID() << ": Media capacity of " << capacity << " blocks exceeded: "
 				<< "Trying to write block " << record << ", block count " << ctrl.blocks;
 		LOGWARN("%s", s.str().c_str());
 		Error(ERROR_CODES::sense_key::ILLEGAL_REQUEST, ERROR_CODES::asc::LBA_OUT_OF_RANGE);

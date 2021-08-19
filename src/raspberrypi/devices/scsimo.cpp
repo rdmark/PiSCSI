@@ -61,29 +61,29 @@ void SCSIMO::Open(const Filepath& path)
 		// 128MB
 		case 0x797f400:
 			// 512 bytes per sector
-			disk.size = 9;
-			disk.blocks = 248826;
+			SetSectorSize(9);
+			SetBlockCount(248826);
 			break;
 
 		// 230MB
 		case 0xd9eea00:
 			// 512 bytes per sector
-			disk.size = 9;
-			disk.blocks = 446325;
+			SetSectorSize(9);
+			SetBlockCount(446325);
 			break;
 
 		// 540MB
 		case 0x1fc8b800:
 			// 512 bytes per sector
-			disk.size = 9;
-			disk.blocks = 1041500;
+			SetSectorSize(9);
+			SetBlockCount(1041500);
 			break;
 
 		// 640MB
 		case 0x25e28000:
 			// 2048 bytes per sector
-			disk.size = 11;
-			disk.blocks = 310352;
+			SetSectorSize(11);
+			SetBlockCount(310352);
 			break;
 
 		// Other (this is an error)
@@ -106,7 +106,7 @@ void SCSIMO::Open(const Filepath& path)
 //	INQUIRY
 //
 //---------------------------------------------------------------------------
-int SCSIMO::Inquiry(const DWORD *cdb, BYTE *buf, DWORD major, DWORD minor)
+int SCSIMO::Inquiry(const DWORD *cdb, BYTE *buf)
 {
 	ASSERT(cdb);
 	ASSERT(buf);
@@ -169,7 +169,7 @@ bool SCSIMO::ModeSelect(const DWORD *cdb, const BYTE *buf, int length)
 		// Mode Parameter header
 		if (length >= 12) {
 			// Check the block length (in bytes)
-			size = 1 << disk.size;
+			size = 1 << GetSectorSize();
 			if (buf[9] != (BYTE)(size >> 16) ||
 				buf[10] != (BYTE)(size >> 8) || buf[11] != (BYTE)size) {
 				// Currently does not allow changing sector length
@@ -189,7 +189,7 @@ bool SCSIMO::ModeSelect(const DWORD *cdb, const BYTE *buf, int length)
 				// format device
 				case 0x03:
 					// Check the number of bytes in the physical sector
-					size = 1 << disk.size;
+					size = 1 << GetSectorSize();
 					if (buf[0xc] != (BYTE)(size >> 8) ||
 						buf[0xd] != (BYTE)size) {
 						// Currently does not allow changing sector length
@@ -267,8 +267,9 @@ int SCSIMO::AddVendor(int page, BOOL change, BYTE *buf)
 	if (IsReady()) {
 		unsigned spare = 0;
 		unsigned bands = 0;
+		DWORD blocks = GetBlockCount();
 
-		if (disk.size == 9) switch (disk.blocks) {
+		if (GetSectorSize() == 9) switch (blocks) {
 			// 128MB
 			case 248826:
 				spare = 1024;
@@ -288,7 +289,7 @@ int SCSIMO::AddVendor(int page, BOOL change, BYTE *buf)
 				break;
 		}
 
-		if (disk.size == 11) switch (disk.blocks) {
+		if (GetSectorSize() == 11) switch (blocks) {
 			// 640MB
 			case 310352:
 				spare = 2244;
@@ -304,10 +305,10 @@ int SCSIMO::AddVendor(int page, BOOL change, BYTE *buf)
 
 		buf[2] = 0; // format mode
 		buf[3] = 0; // type of format
-		buf[4] = (BYTE)(disk.blocks >> 24);
-		buf[5] = (BYTE)(disk.blocks >> 16);
-		buf[6] = (BYTE)(disk.blocks >> 8);
-		buf[7] = (BYTE)disk.blocks;
+		buf[4] = (BYTE)(blocks >> 24);
+		buf[5] = (BYTE)(blocks >> 16);
+		buf[6] = (BYTE)(blocks >> 8);
+		buf[7] = (BYTE)blocks;
 		buf[8] = (BYTE)(spare >> 8);
 		buf[9] = (BYTE)spare;
 		buf[10] = (BYTE)(bands >> 8);
