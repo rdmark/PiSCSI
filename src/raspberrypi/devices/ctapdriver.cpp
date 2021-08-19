@@ -150,11 +150,11 @@ BOOL CTapDriver::Init()
 		return FALSE;
 	}
 
-	LOGINFO("Checking if rascsi_bridge is available");
-
 	// Check if the bridge is already created
 	if (access("/sys/class/net/rascsi_bridge", F_OK) != 0) {
-		LOGINFO("Checking whether to use interface eth0 or wlan0");
+		LOGINFO("rascsi_bridge is not yet available");
+
+		LOGINFO("Checking whether to create bridge for interface eth0 or wlan0");
 		const char *interface = NULL;
 		if (is_interface_up("eth0")) {
 			interface = "eth0";
@@ -163,11 +163,11 @@ BOOL CTapDriver::Init()
 			interface = "wlan0";
 		}
 		if (!interface) {
-			LOGERROR("Neither interface eth0 nor wlan0 is up");
+			LOGERROR("Neither interface eth0 nor wlan0 is up, not creating bridge");
 			return FALSE;
 		}
 
-		LOGINFO("Creating the rascsi_bridge for interface %s...", interface);
+		LOGINFO("Creating rascsi_bridge for interface %s...", interface);
 		LOGDEBUG("brctl addbr rascsi_bridge");
 		if ((ret = ioctl(br_socket_fd, SIOCBRADDBR, "rascsi_bridge")) < 0) {
 			LOGERROR("Error: can't ioctl SIOCBRADDBR. Errno: %d %s", errno, strerror(errno));
@@ -215,7 +215,7 @@ BOOL CTapDriver::Init()
 	}
 	else
 	{
-		LOGINFO("Note: rascsi_bridge already created");
+		LOGINFO("rascsi_bridge is already available");
 	}
 
 	LOGDEBUG("ip link set ras0 up");
