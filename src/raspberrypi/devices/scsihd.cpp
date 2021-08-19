@@ -61,7 +61,7 @@ void SCSIHD::Open(const Filepath& path)
 {
 	ASSERT(!IsReady());
 
-	// read open required
+	// Open as read-only
 	Fileio fio;
 	if (!fio.Open(path, Fileio::ReadOnly)) {
 		throw io_exception("Can't open hard disk file read-only");
@@ -76,39 +76,18 @@ void SCSIHD::Open(const Filepath& path)
 		throw io_exception("File size must be a multiple of 512 bytes");
 	}
 
-    // 2TB according to xm6i
-    // There is a similar one in wxw/wxw_cfg.cpp
-	// Bigger files/drives require READ/WRITE(16) to be implemented
+    // 2TB is the current maximum
 	if (size > 2LL * 1024 * 1024 * 1024 * 1024) {
 		throw io_exception("File size must not exceed 2 TB");
 	}
 
-	// sector size 612 bytes and number of blocks
+	// sector size 512 bytes and number of blocks
 	disk.size = 9;
 	disk.blocks = (DWORD)(size >> 9);
 
 	// Set the default product name based on the drive capacity
-	int capacity = disk.blocks >> 11;
 	stringstream product;
-	if (capacity < 300) {
-		product << "PRODRIVE LPS" << capacity;
-	}
-	else if (capacity < 600) {
-		product << "MAVERICK" << capacity;
-	}
-	else if (capacity < 800) {
-		product << "LIGHTNING" << capacity;
-	}
-	else if (capacity < 1000) {
-		product << "TRAILBRAZER" << capacity;
-	}
-	else if (capacity < 2000) {
-		product << "FIREBALL" << capacity;
-	}
-	else {
-		product << "FBSE" << capacity / 1000 << "." << (capacity % 1000) / 100;
-	}
-	product << "S";
+	product << DEFAULT_PRODUCT << " " << (disk.blocks >> 11) << " MB";
 	SetProduct(product.str(), false);
 
 	Disk::Open(path);
@@ -246,8 +225,6 @@ bool SCSIHD::ModeSelect(const DWORD *cdb, const BYTE *buf, int length)
 	}
 
 	// Do not generate an error for the time being (MINIX)
-	SetStatusCode(STATUS_NOERROR);
-
 	return true;
 }
 
