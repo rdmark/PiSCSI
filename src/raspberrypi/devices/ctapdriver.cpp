@@ -174,6 +174,7 @@ BOOL CTapDriver::Init()
 			struct sockaddr_in* netmask = (struct sockaddr_in*)&ifr_n.ifr_addr;
 			inet_pton(AF_INET, "255.255.255.0", &netmask->sin_addr);
 			if (ioctl(ip_fd, SIOCSIFADDR, &ifr_a) < 0 || ioctl(ip_fd, SIOCSIFNETMASK, &ifr_n) < 0) {
+				LOGERROR("Error: can't ioctl SIOCSIFADDR or SIOCSIFNETMASK. Errno: %d %s", errno, strerror(errno));
 				close(m_hTAP);
 				close(ip_fd);
 				close(br_socket_fd);
