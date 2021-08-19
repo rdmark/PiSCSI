@@ -129,7 +129,7 @@ BOOL CTapDriver::Init()
 		return FALSE;
 	}
 
-	LOGTRACE("Going to see if eth0 is up");
+	LOGTRACE("Going to see if rascsi_bridge is available");
 
 	// Check if the bridge is already created
 	if (access("/sys/class/net/rascsi_bridge", F_OK) != 0) {
